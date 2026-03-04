@@ -1,0 +1,413 @@
+---
+title: 'Reports & Analytics'
+description: 'Generate financial insights and export your data in multiple formats'
+icon: 'chart-mixed'
+---
+
+## Overview
+
+The Reports module provides powerful analytics and export capabilities, helping you understand your financial patterns and share data with accountants, tax preparers, or personal finance tools.
+
+<CardGroup cols={2}>
+  <Card title="Dashboard Analytics" icon="gauge-high">
+    Real-time financial summaries with income, expenses, and cash flow
+  </Card>
+  <Card title="Excel Export" icon="file-excel">
+    Export all transactions to Excel format for analysis
+  </Card>
+  <Card title="CSV Export" icon="file-csv">
+    Lightweight CSV format for importing into other tools
+  </Card>
+  <Card title="PDF Reports" icon="file-pdf">
+    Professional PDF reports in tabular or visual formats
+  </Card>
+</CardGroup>
+
+## Dashboard Statistics
+
+Get a comprehensive financial summary with GET `/reports/dashboard`:
+
+```bash
+GET /reports/dashboard
+```
+
+Optionally filter by account:
+```bash
+GET /reports/dashboard?accountId=wallet-uuid
+```
+
+### Response Format
+
+```json
+{
+  "summary": {
+    "income": 150000.00,
+    "expense": 98500.50,
+    "cashFlow": 51499.50,
+    "totalAvailable": 175000.00
+  },
+  "chartData": [
+    {
+      "categoryName": "Food & Dining",
+      "total": 35000.00,
+      "color": "#10B981"
+    },
+    {
+      "categoryName": "Transportation",
+      "total": 22000.00,
+      "color": "#3B82F6"
+    },
+    {
+      "categoryName": "Housing",
+      "total": 41500.50,
+      "color": "#F59E0B"
+    }
+  ],
+  "expensesAnalysis": {
+    "fixed": 65000.00,
+    "variable": 33500.50
+  }
+}
+```
+
+### Summary Fields
+
+<AccordionGroup>
+  <Accordion title="income">
+    Total of all INCOME transactions (excludes transfers)
+  </Accordion>
+  
+  <Accordion title="expense">
+    Total of all EXPENSE transactions (excludes transfers)
+  </Accordion>
+  
+  <Accordion title="cashFlow">
+    Net cash flow: income - expense
+    
+    Positive = surplus, Negative = deficit
+  </Accordion>
+  
+  <Accordion title="totalAvailable">
+    Sum of all account balances (your total net worth)
+  </Accordion>
+</AccordionGroup>
+
+### Chart Data
+
+The `chartData` array provides expense breakdown by category:
+- Grouped by top-level categories
+- Sorted by total amount (highest first)
+- Includes category color for visualization
+- Perfect for pie charts or bar graphs
+
+### Expenses Analysis
+
+Breaks down expenses into:
+- **fixed**: Categories marked with `isFixed: true` (rent, subscriptions, insurance)
+- **variable**: All other expense categories
+
+This helps identify where you have control over spending.
+
+## Excel Export
+
+Export all your transactions to Excel format with GET `/reports/export`:
+
+```bash
+GET /reports/export
+```
+
+Optional filtering by account:
+```bash
+GET /reports/export?accountId=wallet-uuid
+```
+
+### Excel File Structure
+
+The exported file includes a worksheet named "Mis Transacciones" with columns:
+
+| Column | Description |
+|--------|-------------|
+| Fecha | Transaction date |
+| Tipo | Transaction type (INCOME, EXPENSE, TRANSFER) |
+| Categoría | Category name (or "Sin Categoría") |
+| Descripción | Transaction description |
+| Monto | Transaction amount |
+| Moneda | Currency code (ARS, USD, EUR) |
+
+### Download Response
+
+```
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+Content-Disposition: attachment; filename="movimientos.xlsx"
+```
+
+<Note>
+  Transactions are ordered by date (most recent first) and include all non-deleted transactions.
+</Note>
+
+## CSV Export
+
+For a lighter export format, use GET `/reports/export/csv`:
+
+```bash
+GET /reports/export/csv
+```
+
+Optional filtering:
+```bash
+GET /reports/export/csv?accountId=wallet-uuid
+```
+
+### CSV Format
+
+```csv
+Fecha,Tipo,Categoría,Descripción,Monto,Moneda
+2026-03-04T14:30:00.000Z,EXPENSE,Food & Dining,Grocery shopping,1500.75,ARS
+2026-03-03T10:00:00.000Z,INCOME,Salary,Monthly salary,150000.00,ARS
+2026-03-02T18:20:00.000Z,TRANSFER,Transferencia,To savings,5000.00,USD
+```
+
+### Download Response
+
+```
+Content-Type: text/csv
+Content-Disposition: attachment; filename="movimientos.csv"
+```
+
+<Note>
+  CSV exports are ideal for importing into spreadsheet applications, accounting software, or data analysis tools.
+</Note>
+
+## PDF Export (Tabular)
+
+Generate a quick PDF table of transactions with GET `/reports/export/pdf/table`:
+
+```bash
+GET /reports/export/pdf/table
+```
+
+Optional filtering:
+```bash
+GET /reports/export/pdf/table?accountId=wallet-uuid
+```
+
+### PDF Features
+
+- Fast generation using PDFKit
+- Tabular layout optimized for printing
+- Handles large transaction volumes efficiently
+- Black and white for professional appearance
+
+### Download Response
+
+```
+Content-Type: application/pdf
+Content-Disposition: attachment; filename="movimientos_tabla.pdf"
+```
+
+<Note>
+  **Performance**: The tabular PDF is optimized for speed and can handle thousands of transactions without performance issues.
+</Note>
+
+## PDF Export (Visual)
+
+Generate a beautifully designed PDF report with GET `/reports/export/pdf/visual`:
+
+```bash
+GET /reports/export/pdf/visual
+```
+
+Optional filtering:
+```bash
+GET /reports/export/pdf/visual?accountId=wallet-uuid
+```
+
+### Visual Features
+
+- Rich HTML/CSS design rendered via Puppeteer
+- Charts and graphs for visual insights
+- Branded layout with colors and styling
+- Perfect for presentations or formal reporting
+
+### Download Response
+
+```
+Content-Type: application/pdf
+Content-Disposition: attachment; filename="reporte_visual.pdf"
+```
+
+<Warning>
+  **Performance Note**: Visual PDFs take longer to generate due to browser rendering. For large datasets, use the tabular format instead.
+</Warning>
+
+## Filtering by Account
+
+All report endpoints support filtering by a specific account:
+
+```bash
+# Dashboard for specific account
+GET /reports/dashboard?accountId=wallet-uuid
+
+# Excel export for specific account
+GET /reports/export?accountId=wallet-uuid
+
+# CSV export for specific account
+GET /reports/export/csv?accountId=wallet-uuid
+
+# PDF export for specific account
+GET /reports/export/pdf/table?accountId=wallet-uuid
+GET /reports/export/pdf/visual?accountId=wallet-uuid
+```
+
+This allows you to:
+- Generate account-specific reports
+- Track spending per wallet or credit card
+- Share specific account data with others
+
+## Report Data Sources
+
+All reports use the same data sources:
+
+<Accordion title="Transactions">
+  Only non-deleted transactions are included (`deletedAt: null`). Soft-deleted transactions are excluded from all reports.
+</Accordion>
+
+<Accordion title="Categories">
+  Category information (name, color, icon) is joined from the categories table. Transactions without categories show "Sin Categoría".
+</Accordion>
+
+<Accordion title="Accounts">
+  Account balances are aggregated from the accounts table. The balance field reflects all historical transactions.
+</Accordion>
+
+<Accordion title="Fixed vs Variable">
+  Expense categorization uses the `isFixed` flag on categories. Categories not marked as fixed are considered variable.
+</Accordion>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Regular Exports">
+    Export your data monthly as a backup. Store Excel or CSV files in cloud storage for safekeeping.
+  </Accordion>
+  
+  <Accordion title="Use Tabular for Large Datasets">
+    If you have thousands of transactions, use the tabular PDF or CSV format for faster generation.
+  </Accordion>
+  
+  <Accordion title="Visual for Presentations">
+    Use the visual PDF format when sharing reports with stakeholders or for formal presentations.
+  </Accordion>
+  
+  <Accordion title="Dashboard for Quick Checks">
+    The dashboard endpoint is lightweight and perfect for mobile apps or frequent status checks.
+  </Accordion>
+  
+  <Accordion title="Filter by Account for Clarity">
+    When analyzing specific financial goals or accounts, use the accountId filter to focus your reports.
+  </Accordion>
+</AccordionGroup>
+
+## Analytics Insights
+
+### Understanding Cash Flow
+
+Your cash flow (income - expense) tells you if you're living within your means:
+
+```json
+{
+  "cashFlow": 51499.50  // Positive = Good!
+}
+```
+
+- **Positive cash flow**: You're saving money each month
+- **Negative cash flow**: You're spending more than you earn
+- **Zero cash flow**: You're breaking even
+
+### Fixed vs Variable Analysis
+
+The expenses analysis helps you understand spending flexibility:
+
+```json
+{
+  "expensesAnalysis": {
+    "fixed": 65000.00,    // 66% of expenses
+    "variable": 33500.50  // 34% of expenses
+  }
+}
+```
+
+<Note>
+  **Optimization Tip**: If fixed expenses exceed 60% of total expenses, look for opportunities to reduce subscriptions, negotiate bills, or refinance loans.
+</Note>
+
+### Category Breakdown
+
+Use `chartData` to identify your top spending categories:
+
+```json
+[
+  { "categoryName": "Housing", "total": 41500.50 },  // 42%
+  { "categoryName": "Food & Dining", "total": 35000.00 },  // 36%
+  { "categoryName": "Transportation", "total": 22000.00 }  // 22%
+]
+```
+
+The top 3 categories typically account for 70-80% of total spending.
+
+## Common Workflows
+
+### Monthly Financial Review
+
+```bash
+# 1. Get dashboard summary
+GET /reports/dashboard
+
+# 2. Review cash flow
+# - Positive? Great! Increase savings.
+# - Negative? Review chart data to find cuts.
+
+# 3. Export for detailed analysis
+GET /reports/export
+
+# 4. Open Excel and create pivot tables for deeper insights
+```
+
+### Tax Preparation
+
+```bash
+# 1. Export full year of transactions
+GET /reports/export/csv
+
+# 2. Filter in spreadsheet for:
+# - Deductible expenses (business, medical, donations)
+# - Taxable income
+# - Investment gains/losses
+
+# 3. Share CSV with accountant or import to tax software
+```
+
+### Account-Specific Analysis
+
+```bash
+# Check credit card spending
+GET /reports/dashboard?accountId=credit-card-uuid
+
+# Generate credit card statement
+GET /reports/export/pdf/visual?accountId=credit-card-uuid
+
+# Compare to credit limit and plan payments
+```
+
+### Budget Planning
+
+```bash
+# 1. Get previous month's analytics
+GET /reports/dashboard
+
+# 2. Review chartData to see actual spending by category
+
+# 3. Set next month's budgets based on actuals:
+# - Categories over budget: reduce next month
+# - Categories under budget: opportunity to reallocate
+```

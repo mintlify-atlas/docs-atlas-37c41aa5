@@ -1,0 +1,162 @@
+---
+title: 'Google OAuth'
+api: 'GET /api/auth/google'
+description: 'Authenticate users with Google OAuth 2.0'
+---
+
+## Overview
+
+The Google OAuth flow consists of two endpoints that work together to authenticate users via their Google account.
+
+## Initiate OAuth Flow
+
+### GET /api/auth/google
+
+Redirects the user to Google's OAuth consent screen.
+
+**No parameters required** - the Google authentication guard handles the redirect automatically.
+
+### Example Request
+
+```bash
+curl -X GET https://api.yourfinanceapp.com/api/auth/google
+```
+
+This will redirect to:
+```
+https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=...&scope=email+profile
+```
+
+---
+
+## OAuth Callback
+
+### GET /api/auth/google/callback
+
+Google redirects back to this endpoint after user authorization.
+
+<ParamField query="code" type="string">
+  Authorization code from Google (handled automatically by the OAuth guard)
+</ParamField>
+
+<ParamField query="state" type="string">
+  CSRF protection state parameter (handled automatically)
+</ParamField>
+
+### Success Flow
+
+On successful authentication, the user is redirected to:
+
+```
+{FRONTEND_URL}/oauth/callback?token={jwt_token}
+```
+
+**Example:**
+```
+https://yourapp.com/oauth/callback?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+### Token Response
+
+The JWT token includes the following payload:
+
+<ResponseField name="sub" type="string">
+  User ID (UUID)
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  User's email from Google
+</ResponseField>
+
+<ResponseField name="role" type="string">
+  User's role (default: "USER")
+</ResponseField>
+
+<ResponseField name="iat" type="number">
+  Token issued at timestamp
+</ResponseField>
+
+### Error Flow
+
+If authentication fails or user denies consent:
+
+```
+{FRONTEND_URL}/login?error=auth_failed
+```
+
+**Example:**
+```
+https://yourapp.com/login?error=auth_failed
+```
+
+## User Registration Behavior
+
+### New Users
+
+When a user authenticates with Google for the first time:
+
+- A new user account is created with:
+  - Email from Google profile
+  - First name and last name from Google
+  - Google profile picture as avatar
+  - Auth provider set to `GOOGLE`
+  - Default currency: `ARS`
+  - Default role: `USER`
+  - Password set to `null` (OAuth users don't have passwords)
+
+- Default wallet and categories are initialized automatically
+
+### Existing Users
+
+If a user already exists with the same email:
+
+- Auth provider is updated to `GOOGLE` (if previously `LOCAL`)
+- Google ID is stored in `authProviderId`
+- Avatar URL is updated with Google profile picture
+- Other user data remains unchanged
+
+## Example Integration
+
+### Frontend Button
+
+```javascript
+// Redirect user to initiate OAuth flow
+const handleGoogleLogin = () => {
+  window.location.href = 'https://api.yourfinanceapp.com/api/auth/google';
+};
+```
+
+### Callback Handler
+
+```javascript
+// Extract token from URL after redirect
+const url = new URL(window.location.href);
+const token = url.searchParams.get('token');
+const error = url.searchParams.get('error');
+
+if (token) {
+  // Store token and redirect to dashboard
+  localStorage.setItem('authToken', token);
+  window.location.href = '/dashboard';
+} else if (error === 'auth_failed') {
+  // Handle authentication failure
+  console.error('Google authentication failed');
+}
+```
+
+## Configuration Requirements
+
+The backend requires the following environment variables:
+
+- `GOOGLE_CLIENT_ID` - OAuth 2.0 client ID from Google Cloud Console
+- `GOOGLE_CLIENT_SECRET` - OAuth 2.0 client secret
+- `GOOGLE_CALLBACK_URL` - Authorized redirect URI (e.g., `https://api.yourfinanceapp.com/api/auth/google/callback`)
+- `FRONTEND_URL` - Your frontend application URL for post-auth redirects
+
+## Security Notes
+
+- The OAuth flow uses Passport.js with Google Strategy
+- State parameter provides CSRF protection
+- Tokens are generated server-side and securely signed
+- User profile data is validated before account creation
+- Missing `FRONTEND_URL` configuration results in 500 error to prevent misconfiguration in production

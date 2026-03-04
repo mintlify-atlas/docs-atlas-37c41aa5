@@ -1,0 +1,202 @@
+---
+title: 'Export to PDF'
+api: 'GET /api/reports/export/pdf/table'
+---
+
+Exports transaction data to PDF format. Two variants available: **Table** (fast, optimized) and **Visual** (styled, rich design).
+
+## PDF Variants
+
+<CardGroup cols={2}>
+  <Card title="Table PDF" icon="table" href="#table-pdf-fast">
+    Fast tabular format using PDFKit (recommended for large datasets)
+  </Card>
+  <Card title="Visual PDF" icon="palette" href="#visual-pdf-styled">
+    Styled report with charts and branding using Puppeteer
+  </Card>
+</CardGroup>
+
+---
+
+## Table PDF (Fast)
+
+**Endpoint**: `GET /api/reports/export/pdf/table`
+
+Optimized for speed and large transaction volumes. Uses native PDFKit-Table library.
+
+### Authentication
+
+Requires Bearer token authentication via `Authorization` header.
+
+### Query Parameters
+
+<ParamField query="accountId" type="string" optional>
+  Filter transactions by a specific account. If omitted, exports all transactions.
+</ParamField>
+
+### Response
+
+- **Content-Type**: `application/pdf`
+- **File Name**: `movimientos_tabla.pdf`
+- **Format**: A4 with 30px margins
+- **Max Records**: 2,000 transactions
+
+### Document Structure
+
+<ResponseField name="Header Section">
+  - Title: "Reporte de Movimientos"
+  - Generated date
+  - Total records count
+  - Account filter (if applied)
+</ResponseField>
+
+<ResponseField name="Table Columns">
+  | Column | Width | Alignment | Description |
+  |--------|-------|-----------|-------------|
+  | Fecha | 60px | Left | Transaction date (YYYY-MM-DD) |
+  | Tipo | 50px | Left | "Ingreso" or "Gasto" |
+  | Categoría | 80px | Left | Category name or "-" |
+  | Cuenta | 80px | Left | Account name or "-" |
+  | Descripción | 140px | Left | Transaction description |
+  | Monto | 70px | Right | Amount with 2 decimals |
+  | Mon | 30px | Left | Currency code |
+</ResponseField>
+
+<ResponseField name="Styling">
+  - **Headers**: Bold, 8pt font
+  - **Amount Colors**: Green for income, red for expenses
+  - **Font**: Helvetica
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET "https://api.yourfinanceapp.com/api/reports/export/pdf/table?accountId=account_123" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -o transactions.pdf
+```
+
+---
+
+## Visual PDF (Styled)
+
+**Endpoint**: `GET /api/reports/export/pdf/visual`
+
+Rich, visually appealing report with HTML/CSS styling rendered via Puppeteer.
+
+### Authentication
+
+Requires Bearer token authentication via `Authorization` header.
+
+### Query Parameters
+
+<ParamField query="accountId" type="string" optional>
+  Filter transactions by a specific account. If omitted, exports all transactions.
+</ParamField>
+
+### Response
+
+- **Content-Type**: `application/pdf`
+- **File Name**: `reporte_visual.pdf`
+- **Format**: A4 with custom margins (20px sides, 40px bottom)
+- **Max Records**: 2,000 transactions
+
+### Document Features
+
+<ResponseField name="Summary Cards">
+  Displays key metrics at the top:
+  - Total Income (with currency)
+  - Total Expenses (with currency)
+  - Net Balance (calculated)
+</ResponseField>
+
+<ResponseField name="Transaction Table">
+  Styled table with:
+  - Colored badges for income/expense types
+  - Category and account information
+  - Formatted dates and amounts
+  - Responsive design optimized for print
+</ResponseField>
+
+<ResponseField name="Header Information">
+  - Generation timestamp
+  - User ID (truncated for privacy)
+  - Account filter name (if applied)
+  - Total transaction count
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET "https://api.yourfinanceapp.com/api/reports/export/pdf/visual" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -o visual_report.pdf
+```
+
+### Implementation Details
+
+The visual PDF uses:
+
+- **Handlebars** templates for HTML generation
+- **Puppeteer** headless browser for PDF rendering
+- **Shared browser instance** (initialized on module startup)
+- **Background colors and CSS** fully rendered
+
+### Error Handling
+
+<Warning>
+  If Puppeteer is not initialized (e.g., Docker environment issues), the endpoint returns:
+  
+  ```json
+  {
+    "message": "El servicio de reportes visuales no está disponible. Intente más tarde.",
+    "error": "PUPPETEER_NOT_READY"
+  }
+  ```
+  
+  **Status Code**: 503 Service Unavailable
+</Warning>
+
+---
+
+## Comparison
+
+| Feature | Table PDF | Visual PDF |
+|---------|-----------|------------|
+| **Speed** | Fast (~200-500ms) | Slower (~1-3s) |
+| **Library** | PDFKit-Table | Puppeteer |
+| **File Size** | Smaller | Larger |
+| **Styling** | Basic | Rich/Custom |
+| **Best For** | Large datasets, quick exports | Presentations, client reports |
+| **Dependencies** | Native (always available) | Requires Puppeteer/Chromium |
+
+## Use Cases
+
+### Table PDF
+- Quick transaction exports for accounting
+- High-volume data downloads
+- Server environments with limited resources
+- Automated batch reporting
+
+### Visual PDF
+- Client-facing reports and presentations
+- Monthly/quarterly summary reports
+- Marketing materials with branding
+- Executive dashboards
+
+## Performance Notes
+
+- Both variants limit to 2,000 most recent transactions
+- Transactions are ordered by date (descending)
+- Soft-deleted records are excluded
+- Amount calculations happen server-side before rendering
+
+## Server Requirements
+
+<Note>
+  Visual PDF requires Puppeteer with Chromium. Ensure your deployment environment supports headless browsers:
+  
+  - Sufficient memory (recommend 512MB+ free)
+  - Chrome/Chromium dependencies installed
+  - Shared browser instance managed by NestJS lifecycle
+</Note>

@@ -1,0 +1,456 @@
+---
+title: 'Accounts'
+description: 'Manage multiple accounts including wallets, savings, investments, and credit cards'
+icon: 'wallet'
+---
+
+## Overview
+
+Accounts represent your financial containers - where your money lives. Your Finance App supports multiple account types, each serving different purposes in your financial life.
+
+<CardGroup cols={2}>
+  <Card title="Multiple Account Types" icon="building-columns">
+    Wallets, Savings, Investments, and Credit Cards in one place
+  </Card>
+  <Card title="Multi-Currency" icon="coins">
+    Each account has its own currency (ARS, USD, EUR)
+  </Card>
+  <Card title="Savings Goals" icon="bullseye-arrow">
+    Set target amounts and track progress for savings accounts
+  </Card>
+  <Card title="Real-Time Balance" icon="gauge-high">
+    Automatic balance updates with every transaction
+  </Card>
+</CardGroup>
+
+## Account Types
+
+Your Finance App supports four types of accounts:
+
+<Accordion title="WALLET">
+  Your everyday spending account. Use it for:
+  - Daily expenses
+  - Bill payments
+  - Regular income deposits
+  
+  Wallets are your primary transaction accounts.
+</Accordion>
+
+<Accordion title="SAVINGS">
+  Accounts for setting aside money for specific goals:
+  - Emergency fund
+  - Vacation savings
+  - Large purchases
+  
+  Savings accounts support target amounts and progress tracking.
+</Accordion>
+
+<Accordion title="INVESTMENT">
+  Track your investment portfolios:
+  - Stock accounts
+  - Crypto wallets
+  - Retirement accounts
+  
+  Investment accounts help you monitor your net worth.
+</Accordion>
+
+<Accordion title="CREDIT_CARD">
+  Manage credit card balances:
+  - Track spending on credit
+  - Monitor credit utilization
+  - Plan repayments
+  
+  Credit cards show as negative balances when you owe money.
+</Accordion>
+
+## Creating an Account
+
+Create a new account with POST `/accounts`:
+
+```json
+{
+  "name": "Main Wallet",
+  "type": "WALLET",
+  "currency": "ARS",
+  "color": "#10B981",
+  "icon": "wallet"
+}
+```
+
+### Request Parameters
+
+<ParamField path="name" type="string" required>
+  Account name (e.g., "Main Wallet", "Emergency Fund")
+</ParamField>
+
+<ParamField path="type" type="enum" required>
+  Account type: `WALLET`, `SAVINGS`, `INVESTMENT`, or `CREDIT_CARD`
+</ParamField>
+
+<ParamField path="currency" type="enum" required>
+  Currency code: `ARS`, `USD`, or `EUR`
+</ParamField>
+
+<ParamField path="color" type="string">
+  Hex color code for visual identification (e.g., #10B981)
+</ParamField>
+
+<ParamField path="icon" type="string">
+  Icon name (default: "wallet")
+</ParamField>
+
+<ParamField path="targetAmount" type="number">
+  Target amount for savings goals (SAVINGS accounts only)
+</ParamField>
+
+<ParamField path="targetDate" type="string">
+  Target date for reaching savings goal (ISO date string)
+</ParamField>
+
+### Response
+
+```json
+{
+  "id": "uuid",
+  "name": "Main Wallet",
+  "type": "WALLET",
+  "currency": "ARS",
+  "balance": 0,
+  "color": "#10B981",
+  "icon": "wallet",
+  "isDefault": false,
+  "targetAmount": null,
+  "targetDate": null,
+  "userId": "user-uuid",
+  "createdAt": "2026-03-04T10:00:00.000Z",
+  "updatedAt": "2026-03-04T10:00:00.000Z"
+}
+```
+
+<Note>
+  New accounts always start with a balance of 0. Use the deposit endpoint or create income transactions to add funds.
+</Note>
+
+## Savings Goals
+
+Set targets for SAVINGS accounts to track progress:
+
+```json
+{
+  "name": "Emergency Fund",
+  "type": "SAVINGS",
+  "currency": "USD",
+  "targetAmount": 10000,
+  "targetDate": "2027-01-01T00:00:00.000Z"
+}
+```
+
+When listing accounts, the system calculates your progress:
+
+```json
+{
+  "id": "uuid",
+  "name": "Emergency Fund",
+  "type": "SAVINGS",
+  "balance": 6500,
+  "targetAmount": 10000,
+  "targetDate": "2027-01-01T00:00:00.000Z",
+  "progress": 65
+}
+```
+
+<Note>
+  **Progress Calculation**: Progress = (current balance / target amount) × 100, capped at 100%.
+</Note>
+
+## Listing Accounts
+
+Get all your accounts with GET `/accounts`:
+
+```bash
+GET /accounts
+```
+
+Response:
+```json
+[
+  {
+    "id": "uuid-1",
+    "name": "Main Wallet",
+    "type": "WALLET",
+    "currency": "ARS",
+    "balance": 125000.50,
+    "color": "#10B981",
+    "icon": "wallet",
+    "isDefault": true,
+    "targetAmount": null,
+    "progress": 0
+  },
+  {
+    "id": "uuid-2",
+    "name": "Emergency Fund",
+    "type": "SAVINGS",
+    "currency": "USD",
+    "balance": 6500,
+    "color": "#F59E0B",
+    "icon": "piggy-bank",
+    "isDefault": false,
+    "targetAmount": 10000,
+    "progress": 65
+  }
+]
+```
+
+Accounts are sorted by creation date (oldest first).
+
+## Balance Tracking
+
+Account balances update automatically when you:
+- Create a transaction
+- Update a transaction
+- Delete a transaction
+- Transfer between accounts
+- Make a deposit
+
+<Warning>
+  **Don't Modify Balance Directly**: The balance is calculated from transactions. Always create transactions to change balances, never edit the balance field directly.
+</Warning>
+
+## Currency Rules
+
+Each account has a fixed currency that cannot be changed:
+
+<Accordion title="Single Currency Per Account">
+  Once created, an account's currency is permanent. This ensures:
+  - Clear transaction history
+  - Accurate balance calculations
+  - No currency conversion confusion
+  
+  To work with multiple currencies, create separate accounts.
+</Accordion>
+
+<Accordion title="Transaction Currency Validation">
+  All transactions on an account must match its currency:
+  
+  ```json
+  // ❌ This will fail on an ARS account
+  {
+    "accountId": "ars-account-uuid",
+    "currency": "USD",
+    "amount": 100
+  }
+  ```
+  
+  Error: "No puedes crear una transacción en USD en una cuenta configurada en ARS."
+</Accordion>
+
+## Transferring Between Accounts
+
+Move money between your accounts with POST `/accounts/transfer`:
+
+```json
+{
+  "sourceAccountId": "wallet-uuid",
+  "targetAccountId": "savings-uuid",
+  "amount": 5000,
+  "description": "Monthly savings",
+  "date": "2026-03-04T10:00:00.000Z"
+}
+```
+
+### Transfer Rules
+
+<AccordionGroup>
+  <Accordion title="Same Currency Required">
+    Source and target accounts must have the same currency. Cross-currency transfers are not yet supported.
+  </Accordion>
+  
+  <Accordion title="Sufficient Funds">
+    The source account must have enough balance to cover the transfer amount.
+  </Accordion>
+  
+  <Accordion title="Automatic Transactions">
+    Transfers create two transactions:
+    - **TRANSFER** (outgoing) from source account
+    - **INCOME** (incoming) to target account
+    
+    Both use the "Transferencia" category (created automatically).
+  </Accordion>
+  
+  <Accordion title="Atomic Operation">
+    The entire transfer succeeds or fails as one unit. You'll never have money disappear.
+  </Accordion>
+</AccordionGroup>
+
+### Transfer Response
+
+```json
+{
+  "source": {
+    "id": "wallet-uuid",
+    "name": "Main Wallet",
+    "balance": 120000.50
+  },
+  "target": {
+    "id": "savings-uuid",
+    "name": "Emergency Fund",
+    "balance": 11500
+  }
+}
+```
+
+## Depositing Funds
+
+Add funds to an account (useful for testing) with POST `/accounts/:id/deposit`:
+
+```json
+{
+  "amount": 1000,
+  "description": "Test deposit"
+}
+```
+
+This creates an INCOME transaction and updates the balance.
+
+<Note>
+  The deposit endpoint is primarily for testing. In production, create regular income transactions instead.
+</Note>
+
+## Updating Accounts
+
+Update account properties with PATCH `/accounts/:id`:
+
+```json
+{
+  "name": "Primary Wallet",
+  "color": "#3B82F6",
+  "targetAmount": 15000
+}
+```
+
+You can update:
+- Name
+- Color
+- Icon
+- Target amount (for SAVINGS accounts)
+- Target date (for SAVINGS accounts)
+- Default status
+
+<Warning>
+  **Cannot Change**: Account type and currency cannot be modified after creation.
+</Warning>
+
+## Default Account
+
+Mark one account as default for quick access:
+
+```json
+PATCH /accounts/:id
+{
+  "isDefault": true
+}
+```
+
+Default accounts can be used for:
+- Quick transaction creation in mobile apps
+- Automatic transaction assignment
+- Dashboard primary view
+
+## Deleting Accounts
+
+Delete an account with DELETE `/accounts/:id`:
+
+```bash
+DELETE /accounts/:id
+```
+
+### Deletion Rules
+
+<Accordion title="Cannot Delete Default">
+  You cannot delete an account marked as default. Set another account as default first.
+</Accordion>
+
+<Accordion title="Transactions Remain">
+  Deleting an account doesn't delete its transactions. They remain in the database for historical records.
+</Accordion>
+
+<Accordion title="Hard Delete">
+  Unlike categories and transactions, accounts are hard-deleted (permanently removed).
+</Accordion>
+
+<Note>
+  **Best Practice**: Before deleting an account, transfer its balance to another account to maintain accurate net worth.
+</Note>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Separate Currencies">
+    Create one account per currency you use regularly. This makes tracking and reporting easier.
+  </Accordion>
+  
+  <Accordion title="Name Descriptively">
+    Use clear names like "USD Savings" or "Daily ARS Wallet" instead of "Account 1".
+  </Accordion>
+  
+  <Accordion title="Set Realistic Goals">
+    For savings accounts, set achievable target amounts based on your income and timeline.
+  </Accordion>
+  
+  <Accordion title="Use Colors Consistently">
+    Group related accounts with similar colors (e.g., all USD accounts in blue).
+  </Accordion>
+  
+  <Accordion title="Review Regularly">
+    Check your account balances weekly to catch any unexpected changes.
+  </Accordion>
+</AccordionGroup>
+
+## Common Workflows
+
+### Setting Up Your Accounts
+
+```bash
+# 1. Create primary wallet
+POST /accounts
+{
+  "name": "Main ARS Wallet",
+  "type": "WALLET",
+  "currency": "ARS",
+  "color": "#10B981"
+}
+
+# 2. Create savings account with goal
+POST /accounts
+{
+  "name": "Emergency Fund",
+  "type": "SAVINGS",
+  "currency": "USD",
+  "targetAmount": 10000,
+  "targetDate": "2027-12-31T00:00:00.000Z",
+  "color": "#F59E0B"
+}
+
+# 3. Set primary wallet as default
+PATCH /accounts/:id
+{
+  "isDefault": true
+}
+```
+
+### Monthly Savings Routine
+
+```bash
+# Transfer to savings on payday
+POST /accounts/transfer
+{
+  "sourceAccountId": "wallet-uuid",
+  "targetAccountId": "savings-uuid",
+  "amount": 5000,
+  "description": "Monthly savings - March 2026"
+}
+
+# Check progress
+GET /accounts
+# Look at the "progress" field in the savings account
+```

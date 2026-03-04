@@ -1,0 +1,278 @@
+---
+title: 'List Transactions'
+api: 'GET /api/transactions'
+description: 'Retrieve a paginated list of transactions with optional filtering'
+---
+
+## Authentication
+
+This endpoint requires authentication using a Bearer token.
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication
+</ParamField>
+
+## Query Parameters
+
+### Pagination
+
+<ParamField query="page" type="number" default="1">
+  Page number (minimum: 1)
+</ParamField>
+
+<ParamField query="limit" type="number" default="20">
+  Number of items per page (minimum: 1, maximum: 100)
+</ParamField>
+
+### Filters
+
+<ParamField query="search" type="string">
+  Search by description or category name (case-insensitive)
+</ParamField>
+
+<ParamField query="type" type="enum">
+  Filter by transaction type
+  <expandable title="values">
+    - `income`
+    - `expense`
+  </expandable>
+</ParamField>
+
+<ParamField query="accountId" type="string">
+  Filter by account UUID
+</ParamField>
+
+<ParamField query="categoryId" type="string">
+  Filter by category UUID
+</ParamField>
+
+<ParamField query="currency" type="enum">
+  Filter by currency
+  <expandable title="values">
+    - `ARS` - Argentine Peso
+    - `USD` - US Dollar
+    - `EUR` - Euro
+  </expandable>
+</ParamField>
+
+<ParamField query="startDate" type="string">
+  Filter transactions from this date (ISO 8601 format)
+</ParamField>
+
+<ParamField query="endDate" type="string">
+  Filter transactions until this date (ISO 8601 format)
+</ParamField>
+
+<ParamField query="month" type="number">
+  Filter by month (1-12). Requires `year` parameter.
+</ParamField>
+
+<ParamField query="year" type="number">
+  Filter by year (minimum: 2000). Can be used with `month` parameter.
+</ParamField>
+
+<ParamField query="date" type="string">
+  Filter by specific date (ISO 8601 format)
+</ParamField>
+
+## Response
+
+Returns a paginated response with transaction data and metadata.
+
+<ResponseField name="data" type="array">
+  Array of transaction objects
+  <expandable title="transaction object">
+    <ResponseField name="id" type="string">
+      Transaction UUID
+    </ResponseField>
+    <ResponseField name="type" type="string">
+      Transaction type
+    </ResponseField>
+    <ResponseField name="amount" type="number">
+      Transaction amount
+    </ResponseField>
+    <ResponseField name="currency" type="string">
+      Currency code
+    </ResponseField>
+    <ResponseField name="description" type="string">
+      Transaction description
+    </ResponseField>
+    <ResponseField name="date" type="string">
+      Transaction date
+    </ResponseField>
+    <ResponseField name="account" type="object">
+      Associated account details
+    </ResponseField>
+    <ResponseField name="category" type="object">
+      Associated category details (if any)
+    </ResponseField>
+  </expandable>
+</ResponseField>
+
+<ResponseField name="meta" type="object">
+  Pagination metadata
+  <expandable title="metadata fields">
+    <ResponseField name="page" type="number">
+      Current page number
+    </ResponseField>
+    <ResponseField name="limit" type="number">
+      Items per page
+    </ResponseField>
+    <ResponseField name="total" type="number">
+      Total number of transactions
+    </ResponseField>
+    <ResponseField name="totalPages" type="number">
+      Total number of pages
+    </ResponseField>
+    <ResponseField name="hasNextPage" type="boolean">
+      Whether there is a next page
+    </ResponseField>
+    <ResponseField name="hasPreviousPage" type="boolean">
+      Whether there is a previous page
+    </ResponseField>
+  </expandable>
+</ResponseField>
+
+## Example Requests
+
+<CodeGroup>
+
+```bash Basic List
+curl -X GET "https://api.yourfinanceapp.com/api/transactions?page=1&limit=20" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+```bash Filter by Type and Date Range
+curl -X GET "https://api.yourfinanceapp.com/api/transactions?type=expense&startDate=2026-03-01&endDate=2026-03-31" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+```bash Search and Filter by Account
+curl -X GET "https://api.yourfinanceapp.com/api/transactions?search=comestibles&accountId=uuid-de-la-cuenta" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+```bash Filter by Month and Year
+curl -X GET "https://api.yourfinanceapp.com/api/transactions?month=3&year=2026" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+```javascript JavaScript
+const params = new URLSearchParams({
+  page: '1',
+  limit: '20',
+  type: 'expense',
+  startDate: '2026-03-01',
+  endDate: '2026-03-31'
+});
+
+const response = await fetch(`https://api.yourfinanceapp.com/api/transactions?${params}`, {
+  headers: {
+    'Authorization': 'Bearer YOUR_JWT_TOKEN'
+  }
+});
+
+const { data, meta } = await response.json();
+```
+
+```python Python
+import requests
+
+params = {
+    'page': 1,
+    'limit': 20,
+    'type': 'expense',
+    'startDate': '2026-03-01',
+    'endDate': '2026-03-31'
+}
+
+response = requests.get(
+    'https://api.yourfinanceapp.com/api/transactions',
+    headers={'Authorization': 'Bearer YOUR_JWT_TOKEN'},
+    params=params
+)
+
+result = response.json()
+data = result['data']
+meta = result['meta']
+```
+
+</CodeGroup>
+
+## Example Response
+
+```json
+{
+  "data": [
+    {
+      "id": "a3c4e8f2-9d7b-4a1c-8e3f-2b5d9a7c1e4f",
+      "type": "EXPENSE",
+      "amount": 1500.75,
+      "currency": "ARS",
+      "description": "Compra de comestibles",
+      "date": "2026-03-04T14:30:00.000Z",
+      "userId": "user-uuid-123",
+      "accountId": "uuid-de-la-cuenta",
+      "categoryId": "92b77be3-a14a-462c-a291-7eff27cbcf47",
+      "account": {
+        "id": "uuid-de-la-cuenta",
+        "name": "Cuenta Principal",
+        "type": "WALLET",
+        "balance": 8499.25,
+        "currency": "ARS"
+      },
+      "category": {
+        "id": "92b77be3-a14a-462c-a291-7eff27cbcf47",
+        "name": "Alimentos",
+        "type": "EXPENSE",
+        "icon": "🛒"
+      },
+      "createdAt": "2026-03-04T14:30:15.123Z",
+      "updatedAt": "2026-03-04T14:30:15.123Z",
+      "deletedAt": null
+    },
+    {
+      "id": "b7d9e1f3-2a4c-5e6d-9f8a-3c7b1e5d2a9f",
+      "type": "INCOME",
+      "amount": 5000.00,
+      "currency": "ARS",
+      "description": "Salario mensual",
+      "date": "2026-03-01T10:00:00.000Z",
+      "userId": "user-uuid-123",
+      "accountId": "uuid-de-la-cuenta",
+      "categoryId": "category-uuid-salary",
+      "account": {
+        "id": "uuid-de-la-cuenta",
+        "name": "Cuenta Principal",
+        "type": "WALLET",
+        "balance": 8499.25,
+        "currency": "ARS"
+      },
+      "category": {
+        "id": "category-uuid-salary",
+        "name": "Salario",
+        "type": "INCOME",
+        "icon": "💰"
+      },
+      "createdAt": "2026-03-01T10:00:30.456Z",
+      "updatedAt": "2026-03-01T10:00:30.456Z",
+      "deletedAt": null
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 20,
+    "total": 47,
+    "totalPages": 3,
+    "hasNextPage": true,
+    "hasPreviousPage": false
+  }
+}
+```
+
+## Notes
+
+- Transactions are ordered by date in descending order (newest first)
+- Only non-deleted transactions are returned (where `deletedAt` is null)
+- The search parameter performs case-insensitive matching on both transaction description and category name
+- When using `month` and `year` parameters, they override `startDate` and `endDate` if both are provided

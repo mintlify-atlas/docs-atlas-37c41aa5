@@ -1,0 +1,172 @@
+---
+title: 'Update Account'
+api: 'PATCH /api/accounts/:id'
+---
+
+Updates an existing account. All fields from the create request are available for update, and all are optional.
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the account to update
+</ParamField>
+
+## Request Body
+
+<Info>
+The update DTO extends the create DTO as a partial type, meaning all fields are optional. Only include fields you want to update.
+</Info>
+
+<ParamField body="name" type="string">
+  The name of the account
+</ParamField>
+
+<ParamField body="type" type="enum">
+  The type of account
+  
+  **Options:** `WALLET`, `SAVINGS`, `INVESTMENT`, `CREDIT_CARD`
+</ParamField>
+
+<ParamField body="currency" type="string">
+  The currency code for the account
+  
+  **Options:** `ARS`, `USD`, `EUR`
+</ParamField>
+
+<ParamField body="color" type="string">
+  Hex color identifier for the account
+</ParamField>
+
+<ParamField body="icon" type="string">
+  Icon identifier for the account
+</ParamField>
+
+<ParamField body="targetAmount" type="number">
+  Target amount goal (primarily for SAVINGS accounts)
+  
+  Must be at least 1 if provided
+</ParamField>
+
+<ParamField body="targetDate" type="string">
+  Target date for reaching the goal
+  
+  Format: ISO 8601 date string
+</ParamField>
+
+## Validation Rules
+
+- The account must exist and belong to the authenticated user
+- If `type` is provided, it must be a valid AccountType enum value
+- If `currency` is provided, it must be one of: ARS, USD, EUR
+- If `color` is provided, it must be a valid hex color code
+- If `targetAmount` is provided, it must be at least 1
+- If `targetDate` is provided, it must be a valid ISO 8601 date string
+
+## Response
+
+Returns the updated account object with all fields.
+
+<ResponseField name="id" type="string">
+  Unique identifier for the account
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Updated account name
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  Account type enum value
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  Currency code
+</ResponseField>
+
+<ResponseField name="balance" type="number">
+  Current balance (unchanged by update)
+</ResponseField>
+
+<ResponseField name="color" type="string">
+  Hex color code
+</ResponseField>
+
+<ResponseField name="icon" type="string">
+  Icon identifier
+</ResponseField>
+
+<ResponseField name="targetAmount" type="number | null">
+  Target amount goal
+</ResponseField>
+
+<ResponseField name="targetDate" type="string | null">
+  Target date for goal
+</ResponseField>
+
+<ResponseField name="isDefault" type="boolean">
+  Whether this is the default account
+</ResponseField>
+
+<ResponseField name="userId" type="string">
+  Owner user ID
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  Creation timestamp
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string">
+  Last update timestamp (will be updated)
+</ResponseField>
+
+## Error Responses
+
+<ResponseField name="404" type="error">
+  Account not found - The account doesn't exist or doesn't belong to the user
+</ResponseField>
+
+<ResponseField name="400" type="error">
+  Bad Request - Invalid field values or validation errors
+</ResponseField>
+
+<RequestExample>
+```json Update Name and Color
+{
+  "name": "Emergency Fund",
+  "color": "#EF4444"
+}
+```
+
+```json Update Savings Goal
+{
+  "targetAmount": 10000,
+  "targetDate": "2027-06-30"
+}
+```
+
+```json Change Account Type
+{
+  "type": "INVESTMENT",
+  "icon": "trending-up"
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Emergency Fund",
+  "type": "SAVINGS",
+  "currency": "USD",
+  "balance": 3250,
+  "color": "#EF4444",
+  "icon": "shield",
+  "targetAmount": 10000,
+  "targetDate": "2027-06-30T00:00:00Z",
+  "isDefault": false,
+  "userId": "123e4567-e89b-12d3-a456-426614174000",
+  "createdAt": "2026-02-01T14:00:00Z",
+  "updatedAt": "2026-03-04T11:45:00Z"
+}
+```
+</ResponseExample>

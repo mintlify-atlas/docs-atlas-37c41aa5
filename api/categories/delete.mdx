@@ -1,0 +1,127 @@
+---
+title: 'Delete Category'
+api: 'DELETE /api/categories/:id'
+description: 'Soft delete a category and all its subcategories'
+---
+
+## Endpoint
+
+```
+DELETE /api/categories/:id
+```
+
+Performs a soft delete on a category and cascades to all child categories. The category is not permanently removed but marked with a `deletedAt` timestamp.
+
+## Authentication
+
+Requires JWT authentication via `Authorization: Bearer <token>` header.
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  UUID of the category to delete. Must belong to the authenticated user.
+</ParamField>
+
+## Cascade Behavior
+
+When you delete a parent category:
+1. All child categories are automatically soft-deleted
+2. The operation is atomic (uses a database transaction)
+3. If the parent deletion fails, children remain unchanged
+
+## Soft Delete Details
+
+- Categories are not permanently removed from the database
+- A `deletedAt` timestamp is set to the current date/time
+- Deleted categories are excluded from list queries
+- Transactions and budgets linked to the category are preserved
+
+## Response
+
+Returns a success message with deletion details:
+
+<ResponseField name="message" type="string">
+  Confirmation message: "Category deleted successfully"
+</ResponseField>
+
+<ResponseField name="childrenDeleted" type="number">
+  Number of child categories that were also soft-deleted
+</ResponseField>
+
+## Example Request
+
+```bash
+DELETE /api/categories/123e4567-e89b-12d3-a456-426614174000
+```
+
+## Example Response
+
+### Deleting a parent category with children
+```json
+{
+  "message": "Category deleted successfully",
+  "childrenDeleted": 3
+}
+```
+
+### Deleting a category without children
+```json
+{
+  "message": "Category deleted successfully",
+  "childrenDeleted": 0
+}
+```
+
+## Error Responses
+
+### 404 Not Found
+```json
+{
+  "statusCode": 404,
+  "message": "Category not found"
+}
+```
+
+This error occurs when:
+- The category ID doesn't exist
+- The category doesn't belong to the authenticated user
+- The category was already soft-deleted
+
+### 401 Unauthorized
+```json
+{
+  "statusCode": 401,
+  "message": "Unauthorized"
+}
+```
+
+## Transaction Safety
+
+The delete operation uses a database transaction to ensure data integrity:
+
+```typescript
+// Pseudocode for the deletion process
+transaction {
+  1. Soft delete all children (set deletedAt)
+  2. Soft delete the parent (set deletedAt)
+  3. Commit if both succeed, rollback if either fails
+}
+```
+
+## Important Notes
+
+- **Not permanent**: Categories can potentially be restored by clearing the `deletedAt` field
+- **Relationship preservation**: Linked transactions and budgets remain intact
+- **Cascade required**: Child categories must be deleted with their parent to maintain data consistency
+- **Fixed categories**: Even system-seeded fixed categories can be deleted (user preference)
+
+## Use Cases
+
+### Clean up unused categories
+Delete categories that are no longer needed without losing historical transaction data.
+
+### Remove category hierarchies
+Delete an entire category tree in a single operation.
+
+### User privacy
+When a user deletes their account, all their categories are soft-deleted through the cascade relationship.

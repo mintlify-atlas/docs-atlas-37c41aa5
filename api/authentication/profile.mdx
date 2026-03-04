@@ -1,0 +1,101 @@
+---
+title: 'Get Profile'
+api: 'GET /api/auth/profile'
+description: 'Retrieve the authenticated user profile'
+---
+
+## Authentication
+
+This endpoint requires a valid JWT token in the Authorization header.
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication
+  
+  Format: `Bearer {your_jwt_token}`
+</ParamField>
+
+## Response
+
+<ResponseField name="message" type="string">
+  Success message confirming profile retrieval
+</ResponseField>
+
+<ResponseField name="user" type="object">
+  The authenticated user's profile information
+  
+  <Expandable title="user properties">
+    <ResponseField name="id" type="string">
+      Unique user identifier (UUID)
+    </ResponseField>
+    
+    <ResponseField name="email" type="string">
+      User's email address
+    </ResponseField>
+    
+    <ResponseField name="firstName" type="string" optional>
+      User's first name (may be undefined depending on JWT payload)
+    </ResponseField>
+    
+    <ResponseField name="lastName" type="string" optional>
+      User's last name (may be undefined depending on JWT payload)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X GET https://api.yourfinanceapp.com/api/auth/profile \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDAiLCJlbWFpbCI6ImpvaG4uZG9lQGV4YW1wbGUuY29tIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3MDk1NjE2MDB9.abc123def456"
+```
+
+## Example Response
+
+```json
+{
+  "message": "This is your profile",
+  "user": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "email": "john.doe@example.com",
+    "firstName": "John",
+    "lastName": "Doe"
+  }
+}
+```
+
+## Error Responses
+
+<ResponseField name="401 Unauthorized" type="error">
+  Missing or invalid JWT token
+  
+  **Missing token:**
+  ```json
+  {
+    "statusCode": 401,
+    "message": "Unauthorized"
+  }
+  ```
+  
+  **Invalid/expired token:**
+  ```json
+  {
+    "statusCode": 401,
+    "message": "Unauthorized"
+  }
+  ```
+</ResponseField>
+
+## Additional Information
+
+This endpoint is protected by the `JwtAuthGuard` which:
+- Validates the JWT token signature
+- Checks token expiration
+- Extracts user information from the token payload
+- Attaches the user data to the request context
+
+The user object returned contains information decoded from the JWT token payload, not fetched from the database. This makes it a lightweight endpoint suitable for verifying authentication status.
+
+**Use cases:**
+- Verify if a stored token is still valid
+- Retrieve basic user information without database queries
+- Check authentication status on app initialization or page refresh

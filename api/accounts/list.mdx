@@ -1,0 +1,120 @@
+---
+title: 'List Accounts'
+api: 'GET /api/accounts'
+---
+
+Retrieves all accounts for the authenticated user, ordered by creation date. The response includes calculated progress for savings accounts with target amounts.
+
+## Query Parameters
+
+<Note>
+The current implementation returns all accounts. Filtering by type can be done client-side or may be added in future versions.
+</Note>
+
+## Response
+
+Returns an array of account objects with enhanced data:
+
+<ResponseField name="id" type="string">
+  Unique identifier for the account
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Account name
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  Account type: `WALLET`, `SAVINGS`, `INVESTMENT`, or `CREDIT_CARD`
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  Currency code (ARS, USD, EUR)
+</ResponseField>
+
+<ResponseField name="balance" type="number">
+  Current balance (converted to number)
+</ResponseField>
+
+<ResponseField name="color" type="string">
+  Hex color code
+</ResponseField>
+
+<ResponseField name="icon" type="string">
+  Icon identifier
+</ResponseField>
+
+<ResponseField name="targetAmount" type="number | null">
+  Target amount goal (null if not set)
+</ResponseField>
+
+<ResponseField name="targetDate" type="string | null">
+  Target date for goal
+</ResponseField>
+
+<ResponseField name="progress" type="number">
+  Calculated progress percentage (0-100) based on balance / targetAmount
+  
+  Returns 0 if no target is set. Capped at 100 even if balance exceeds target.
+</ResponseField>
+
+<ResponseField name="isDefault" type="boolean">
+  Whether this is the default account
+</ResponseField>
+
+<ResponseField name="userId" type="string">
+  Owner user ID
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  Creation timestamp
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string">
+  Last update timestamp
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET https://api.yourfinanceapp.com/api/accounts \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+</RequestExample>
+
+<ResponseExample>
+```json
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Main Wallet",
+    "type": "WALLET",
+    "currency": "ARS",
+    "balance": 15000,
+    "color": "#10B981",
+    "icon": "wallet",
+    "targetAmount": null,
+    "targetDate": null,
+    "progress": 0,
+    "isDefault": true,
+    "userId": "123e4567-e89b-12d3-a456-426614174000",
+    "createdAt": "2026-01-15T10:30:00Z",
+    "updatedAt": "2026-03-04T08:20:00Z"
+  },
+  {
+    "id": "660e8400-e29b-41d4-a716-446655440001",
+    "name": "Vacation Fund",
+    "type": "SAVINGS",
+    "currency": "USD",
+    "balance": 3250,
+    "color": "#3B82F6",
+    "icon": "piggy-bank",
+    "targetAmount": 5000,
+    "targetDate": "2026-12-31T00:00:00Z",
+    "progress": 65,
+    "isDefault": false,
+    "userId": "123e4567-e89b-12d3-a456-426614174000",
+    "createdAt": "2026-02-01T14:00:00Z",
+    "updatedAt": "2026-03-04T09:15:00Z"
+  }
+]
+```
+</ResponseExample>

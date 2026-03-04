@@ -1,0 +1,123 @@
+---
+title: 'Login'
+api: 'POST /api/auth/login'
+description: 'Authenticate a user with email and password'
+---
+
+## Request Body
+
+<ParamField body="email" type="string" required>
+  User's registered email address. Must be a valid email format.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  User's password.
+</ParamField>
+
+## Response
+
+<ResponseField name="user" type="object">
+  The authenticated user object
+  
+  <Expandable title="user properties">
+    <ResponseField name="id" type="string">
+      Unique user identifier (UUID)
+    </ResponseField>
+    
+    <ResponseField name="email" type="string">
+      User's email address
+    </ResponseField>
+    
+    <ResponseField name="firstName" type="string">
+      User's first name
+    </ResponseField>
+    
+    <ResponseField name="lastName" type="string">
+      User's last name
+    </ResponseField>
+    
+    <ResponseField name="currency" type="string">
+      User's preferred currency
+    </ResponseField>
+    
+    <ResponseField name="role" type="string">
+      User's role (e.g., "USER", "ADMIN")
+    </ResponseField>
+    
+    <ResponseField name="avatarUrl" type="string | null">
+      URL to user's avatar image
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="token" type="string">
+  JWT authentication token for the user session
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X POST https://api.yourfinanceapp.com/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john.doe@example.com",
+    "password": "SecurePass123!"
+  }'
+```
+
+## Example Response
+
+```json
+{
+  "user": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "email": "john.doe@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "currency": "USD",
+    "role": "USER",
+    "avatarUrl": "https://lh3.googleusercontent.com/a/example"
+  },
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDAiLCJlbWFpbCI6ImpvaG4uZG9lQGV4YW1wbGUuY29tIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3MDk1NjE2MDB9.abc123def456"
+}
+```
+
+## Error Responses
+
+<ResponseField name="401 Unauthorized" type="error">
+  Invalid credentials - wrong email or password
+  
+  ```json
+  {
+    "statusCode": 401,
+    "message": "Credenciales inválidas",
+    "error": "Unauthorized"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="400 Bad Request" type="error">
+  Validation error - invalid email format or missing fields
+  
+  ```json
+  {
+    "statusCode": 400,
+    "message": [
+      "email must be an email",
+      "password must be a string"
+    ],
+    "error": "Bad Request"
+  }
+  ```
+</ResponseField>
+
+## Additional Information
+
+The login endpoint:
+- Validates credentials against hashed passwords using bcrypt
+- Returns the same error message for non-existent users and incorrect passwords to prevent user enumeration
+- Generates a new JWT token containing user ID, email, and role
+- Works only for users registered with `LOCAL` auth provider (email/password)
+- Users registered via Google OAuth must authenticate through the Google flow
+
+The returned JWT token should be stored securely and included in the `Authorization` header as `Bearer {token}` for authenticated requests.

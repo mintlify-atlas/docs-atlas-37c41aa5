@@ -1,80 +1,439 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Get Your Finance App running locally in under 10 minutes"
 ---
 
-## Get started in three steps
+# Quickstart Guide
 
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+Get Your Finance App up and running on your local machine in just a few steps. This guide will take you from zero to a fully functioning API.
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+Estimated time: 10-15 minutes
 </Note>
+
+## Prerequisites
+
+Before you begin, make sure you have:
+
+- **Node.js v18+** installed ([download here](https://nodejs.org/))
+- **Git** installed
+- A **Supabase account** (free tier is fine - [sign up here](https://supabase.com/))
+- A terminal/command line interface
+
+<Steps>
+  <Step title="Check Node.js version">
+    Verify you have Node.js v18 or higher installed:
+    
+    ```bash
+    node --version
+    # Should output v18.0.0 or higher
+    ```
+    
+    If you need to install or update Node.js, visit [nodejs.org](https://nodejs.org/)
+  </Step>
+
+  <Step title="Install pnpm">
+    Install pnpm globally - it's a faster, more efficient package manager:
+    
+    ```bash
+    npm install -g pnpm
+    ```
+    
+    Verify the installation:
+    
+    ```bash
+    pnpm --version
+    # Should output 8.x.x or higher
+    ```
+    
+    <Note>
+    **Why pnpm?** It's faster than npm, saves disk space, and has built-in monorepo support.
+    </Note>
+  </Step>
+
+  <Step title="Clone the repository">
+    Clone the project to your local machine:
+    
+    ```bash
+    git clone https://github.com/RoAriel/your-finance-app.git
+    cd your-finance-app
+    ```
+    
+    Explore the project structure:
+    
+    ```bash
+    ls -la
+    # You should see: apps/, docs/, package.json, pnpm-workspace.yaml
+    ```
+  </Step>
+
+  <Step title="Set up Supabase">
+    Supabase provides free PostgreSQL hosting. Set it up:
+    
+    1. Go to [supabase.com](https://supabase.com) and sign in
+    2. Click **"New Project"**
+    3. Fill in the details:
+       - **Name:** `your-finance-app`
+       - **Database Password:** Choose a strong password and save it
+       - **Region:** Select the closest to you
+       - **Plan:** Free
+    4. Click **"Create new project"** and wait ~2 minutes
+    
+    Once created, get your connection strings:
+    
+    1. Go to **Settings** → **Database**
+    2. Find **Connection string** section
+    3. Select **URI** mode
+    4. Copy both connection strings:
+       - **Transaction mode** (port 6543) - for application queries
+       - **Session mode** (port 5432) - for migrations
+    
+    <Warning>
+    Keep your database password secure! Never commit it to version control.
+    </Warning>
+  </Step>
+
+  <Step title="Configure environment variables">
+    Copy the example environment file and edit it:
+    
+    ```bash
+    cp apps/backend/.env.example apps/backend/.env
+    ```
+    
+    Open `apps/backend/.env` in your editor and update these values:
+    
+    ```env
+    # Transaction mode (port 6543) - for queries
+    DATABASE_URL="postgresql://postgres.xxxxx:YOUR_PASSWORD@aws-0-region.pooler.supabase.com:6543/postgres?pgbouncer=true"
+    
+    # Session mode (port 5432) - for migrations
+    DIRECT_URL="postgresql://postgres.xxxxx:YOUR_PASSWORD@aws-0-region.pooler.supabase.com:5432/postgres"
+    
+    # Generate a secure JWT secret
+    JWT_SECRET="your-secret-key-change-this"
+    
+    # Token expiration time
+    JWT_EXPIRES_IN="7d"
+    ```
+    
+    Generate a secure JWT secret:
+    
+    ```bash
+    node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+    ```
+    
+    Copy the output and use it as your `JWT_SECRET`.
+    
+    <Note>
+    Replace `xxxxx` with your Supabase project ID and `YOUR_PASSWORD` with your database password.
+    </Note>
+  </Step>
+
+  <Step title="Install dependencies">
+    Install all project dependencies:
+    
+    ```bash
+    pnpm install
+    ```
+    
+    This will install dependencies for the entire monorepo. It typically takes 1-3 minutes depending on your internet connection.
+    
+    <Note>
+    pnpm creates symlinks between workspace packages, making installation faster and more efficient.
+    </Note>
+  </Step>
+
+  <Step title="Run database migrations">
+    Set up your database schema by running migrations:
+    
+    ```bash
+    cd apps/backend
+    npx prisma generate
+    npx prisma migrate deploy
+    ```
+    
+    **What this does:**
+    - `prisma generate` creates the TypeScript Prisma Client
+    - `prisma migrate deploy` creates the database tables
+    
+    You should see output like:
+    
+    ```
+    Applying migration `20260104185727_init`
+    Applying migration `20260109000725_add_transactions_and_categories`
+    
+    The following migration(s) have been applied:
+    
+    migrations/
+      └─ 20260104185727_init/
+      └─ 20260109000725_add_transactions_and_categories/
+    ```
+    
+    Verify in Supabase:
+    - Go to your Supabase project → **Table Editor**
+    - You should see tables: `users`, `transactions`, `categories`
+  </Step>
+
+  <Step title="Start the development server">
+    Launch the application:
+    
+    ```bash
+    # From the backend directory:
+    pnpm run start:dev
+    
+    # Or from the project root:
+    cd ../..
+    pnpm dev:backend
+    ```
+    
+    You should see:
+    
+    ```
+    [Nest] LOG [NestFactory] Starting Nest application...
+    [Nest] LOG [InstanceLoader] PrismaModule dependencies initialized
+    [Nest] LOG [InstanceLoader] AuthModule dependencies initialized
+    [Nest] LOG [InstanceLoader] TransactionsModule dependencies initialized
+    [Nest] LOG [RoutesResolver] AuthController {/auth}:
+    [Nest] LOG [RouterExplorer] Mapped {/auth/register, POST} route
+    [Nest] LOG [RouterExplorer] Mapped {/auth/login, POST} route
+    [Nest] LOG [NestApplication] Nest application successfully started
+    ```
+    
+    <Note>
+    The server is now running at `http://localhost:3000`
+    </Note>
+  </Step>
+
+  <Step title="Test the API">
+    Verify everything works by testing the endpoints.
+    
+    ### Test the health check:
+    
+    Open your browser and visit:
+    ```
+    http://localhost:3000
+    ```
+    
+    You should see: `"Hello World!"`
+    
+    ### Register a new user:
+    
+    ```bash
+    curl -X POST http://localhost:3000/auth/register \
+      -H "Content-Type: application/json" \
+      -d '{
+        "email": "test@example.com",
+        "password": "password123",
+        "name": "Test User"
+      }'
+    ```
+    
+    Expected response:
+    
+    ```json
+    {
+      "user": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "email": "test@example.com",
+        "name": "Test User",
+        "createdAt": "2026-03-04T10:30:00.000Z"
+      },
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    }
+    ```
+    
+    ### Create a transaction:
+    
+    Save the token from the registration response:
+    
+    ```bash
+    TOKEN="your-token-here"
+    
+    curl -X POST http://localhost:3000/transactions \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer $TOKEN" \
+      -d '{
+        "type": "expense",
+        "amount": 500,
+        "description": "Coffee",
+        "currency": "USD"
+      }'
+    ```
+    
+    Expected response:
+    
+    ```json
+    {
+      "id": "660e8400-e29b-41d4-a716-446655440000",
+      "type": "expense",
+      "amount": 500,
+      "description": "Coffee",
+      "currency": "USD",
+      "createdAt": "2026-03-04T10:35:00.000Z"
+    }
+    ```
+    
+    ### Check your balance:
+    
+    ```bash
+    curl http://localhost:3000/transactions/balance \
+      -H "Authorization: Bearer $TOKEN"
+    ```
+    
+    Expected response:
+    
+    ```json
+    {
+      "income": 0,
+      "expense": 500,
+      "balance": -500
+    }
+    ```
+    
+    <Note>
+    You can also use tools like [Postman](https://www.postman.com/) or [Thunder Client](https://www.thunderclient.com/) (VS Code extension) to test the API.
+    </Note>
+  </Step>
+</Steps>
+
+## What's Next?
+
+Congratulations! You now have Your Finance App running locally. Here's what to explore next:
+
+<CardGroup cols={2}>
+  <Card title="Setup Guide" icon="wrench" href="/setup-guide">
+    Learn detailed configuration and troubleshooting
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="/api/authentication/register">
+    Explore all available endpoints
+  </Card>
+  
+  <Card title="Architecture" icon="sitemap" href="/architecture/overview">
+    Understand how the application is structured
+  </Card>
+  
+  <Card title="Database Schema" icon="database" href="/architecture/database">
+    Learn about the data models
+  </Card>
+</CardGroup>
+
+## Useful Commands
+
+Here are some common commands you'll use during development:
+
+<CodeGroup>
+```bash Start Development Server
+# From project root
+pnpm dev:backend
+
+# Or from apps/backend
+pnpm run start:dev
+```
+
+```bash View Database in Browser
+cd apps/backend
+npx prisma studio
+# Opens at http://localhost:5555
+```
+
+```bash Format Code
+pnpm run format
+```
+
+```bash Run Linting
+pnpm run lint
+```
+
+```bash Build for Production
+pnpm run build
+```
+</CodeGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Error: Cannot find module '@nestjs/core'">
+    **Solution:** Dependencies weren't installed properly.
+    
+    ```bash
+    cd apps/backend
+    pnpm install
+    ```
+  </Accordion>
+  
+  <Accordion title="Error: Environment variable not found: DATABASE_URL">
+    **Solution:** The `.env` file is missing or incorrect.
+    
+    1. Make sure `.env` exists in `apps/backend/`
+    2. Verify it contains `DATABASE_URL` and `DIRECT_URL`
+    3. Restart the server
+  </Accordion>
+  
+  <Accordion title="Error: connect ECONNREFUSED or connection timeout">
+    **Solution:** Database connection issue.
+    
+    1. Verify your Supabase connection strings are correct
+    2. Check that your database password matches
+    3. Ensure there are no extra spaces in `.env`
+    4. Confirm your Supabase project is active
+  </Accordion>
+  
+  <Accordion title="Error: Port 3000 is already in use">
+    **Solution:** Another process is using port 3000.
+    
+    Find and kill the process:
+    ```bash
+    # On Mac/Linux
+    lsof -i :3000
+    kill -9 <PID>
+    
+    # On Windows
+    netstat -ano | findstr :3000
+    taskkill /PID <PID> /F
+    ```
+    
+    Or change the port in `apps/backend/src/main.ts`:
+    ```typescript
+    await app.listen(3001); // Use a different port
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Quick Reference
+
+### Project Structure
+
+```
+your-finance-app/
+├── apps/backend/          # Main application
+│   ├── src/
+│   │   ├── auth/          # Authentication module
+│   │   ├── transactions/  # Transactions module
+│   │   └── prisma/        # Database service
+│   ├── prisma/
+│   │   ├── schema.prisma  # Database schema
+│   │   └── migrations/    # Migration files
+│   └── .env               # Environment variables
+└── docs/                  # Documentation
+```
+
+### Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev:backend` | Start development server |
+| `pnpm run build` | Build for production |
+| `pnpm run start:prod` | Run production build |
+| `pnpm run format` | Format code with Prettier |
+| `pnpm run lint` | Lint code with ESLint |
+| `npx prisma studio` | Open database GUI |
+| `npx prisma migrate dev` | Create new migration |
+
+## Need More Help?
+
+For detailed setup instructions, configuration options, and troubleshooting, check out the [Setup Guide](/setup-guide).
+
+<Card title="Detailed Setup Guide" icon="book-open" href="/setup-guide">
+  Complete installation guide with advanced configuration
+</Card>

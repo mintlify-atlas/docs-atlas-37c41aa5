@@ -1,0 +1,308 @@
+---
+title: Architecture Overview
+description: Understanding the NestJS modular architecture and project structure
+---
+
+## Introduction
+
+Your Finance App is built on a modern, scalable architecture using **NestJS** for the backend and **React** with **Vite** for the frontend. The application follows a modular monorepo structure with clear separation of concerns.
+
+## Project Structure
+
+The application is organized as a monorepo with the following structure:
+
+```
+workspace/
+├── apps/
+│   ├── backend/          # NestJS API server
+│   └── frontend/         # React + Vite client
+├── prisma/
+│   └── schema.prisma     # Database schema
+└── shared/               # Shared types and utilities
+```
+
+### Backend Structure
+
+The backend follows NestJS conventions with a modular architecture:
+
+```
+apps/backend/src/
+├── app.module.ts         # Root module
+├── main.ts               # Application bootstrap
+├── auth/                 # Authentication module
+├── transactions/         # Transaction management
+├── categories/           # Category management
+├── account/              # Account management
+├── budgets/              # Budget tracking
+├── reports/              # Analytics and reporting
+├── user/                 # User management
+├── prisma/               # Database service
+└── common/               # Shared utilities
+    ├── filters/          # Exception filters
+    ├── decorators/       # Custom decorators
+    └── constants/        # Application constants
+```
+
+## Module Organization
+
+The application is composed of several feature modules, each encapsulating specific business logic:
+
+<CodeGroup>
+```typescript apps/backend/src/app.module.ts
+import { Module } from '@nestjs/common';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { PrismaModule } from '../prisma/prisma.module';
+import { AuthModule } from './auth/auth.module';
+import { TransactionsModule } from './transactions/transactions.module';
+import { CategoriesModule } from './categories/categories.module';
+import { AccountsModule } from './account/accounts.module';
+import { BudgetsModule } from './budgets/budgets.module';
+import { ReportsModule } from './reports/reports.module';
+import { UsersModule } from './user/users.module';
+import { ConfigModule } from '@nestjs/config';
+import { ServeStaticModule } from '@nestjs/serve-static';
+
+@Module({
+  imports: [
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'public'),
+    }),
+    PrismaModule,
+    AuthModule,
+    TransactionsModule,
+    CategoriesModule,
+    AccountsModule,
+    BudgetsModule,
+    ReportsModule,
+    UsersModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+  ],
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LoggerMiddleware).forRoutes('*');
+  }
+}
+```
+</CodeGroup>
+
+### Core Modules
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="lock">
+    JWT-based authentication with Google OAuth integration, password hashing, and role-based access control
+  </Card>
+  
+  <Card title="Transactions" icon="dollar-sign">
+    Income, expense, and transfer tracking with category assignment and account association
+  </Card>
+  
+  <Card title="Categories" icon="tags">
+    Hierarchical category system supporting income, expense, and both types with custom colors and icons
+  </Card>
+  
+  <Card title="Accounts" icon="wallet">
+    Multi-account support including wallets, savings, investments, and credit cards with balance tracking
+  </Card>
+  
+  <Card title="Budgets" icon="chart-bar">
+    Monthly budget allocation per category with spending alerts
+  </Card>
+  
+  <Card title="Reports" icon="chart-line">
+    Analytics and insights for financial trends and spending patterns
+  </Card>
+</CardGroup>
+
+## Dependency Injection Pattern
+
+NestJS leverages **dependency injection** to manage service instances and promote loose coupling:
+
+```typescript
+@Injectable()
+export class TransactionsService {
+  constructor(
+    private prisma: PrismaService,  // Injected database service
+    private logger: Logger,          // Injected logging service
+  ) {}
+
+  async create(userId: string, dto: CreateTransactionDto) {
+    return this.prisma.transaction.create({
+      data: { ...dto, userId },
+    });
+  }
+}
+```
+
+<Tip>
+Services are automatically instantiated and injected by NestJS's IoC container, making testing and maintenance easier.
+</Tip>
+
+## API Design
+
+The application exposes a **RESTful API** with the following characteristics:
+
+### Global Prefix
+
+All API endpoints are prefixed with `/api`:
+
+```typescript
+app.setGlobalPrefix('api');
+// Results in: http://localhost:3000/api/transactions
+```
+
+### Validation Pipeline
+
+Global validation pipes ensure data integrity:
+
+<CodeGroup>
+```typescript apps/backend/src/main.ts
+app.useGlobalPipes(
+  new ValidationPipe({
+    whitelist: true,              // Strip unknown properties
+    forbidNonWhitelisted: true,   // Throw error on unknown properties
+    transform: true,              // Auto-transform to DTO types
+    transformOptions: {
+      enableImplicitConversion: true,
+    },
+  }),
+);
+```
+</CodeGroup>
+
+### Exception Handling
+
+Custom exception filters provide consistent error responses:
+
+```typescript
+app.useGlobalFilters(
+  new HttpExceptionFilter(),    // HTTP exceptions
+  new PrismaExceptionFilter(),  // Database errors
+  new AllExceptionsFilter(),    // Catch-all handler
+);
+```
+
+## Swagger Documentation
+
+The API is fully documented using **Swagger/OpenAPI**:
+
+<CodeGroup>
+```typescript apps/backend/src/main.ts
+const config = new DocumentBuilder()
+  .setTitle('Your Finance App API')
+  .setDescription('Documentación para la API de finanzas personales')
+  .setVersion('1.0')
+  .addBearerAuth()
+  .build();
+
+const document = SwaggerModule.createDocument(app, config);
+SwaggerModule.setup('docs', app, document);
+```
+</CodeGroup>
+
+<Info>
+Access interactive API documentation at `http://localhost:3000/docs`
+</Info>
+
+## CORS Configuration
+
+The backend is configured to accept requests from the frontend:
+
+```typescript
+const app = await NestFactory.create(AppModule, {
+  cors: {
+    origin: 'http://localhost:5173',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+  },
+});
+```
+
+## Middleware
+
+Global middleware handles cross-cutting concerns:
+
+- **LoggerMiddleware**: Request/response logging
+- **CORS**: Cross-origin resource sharing
+- **Static Files**: Serving public assets
+
+## Configuration Management
+
+Environment variables are managed via `@nestjs/config`:
+
+```typescript
+ConfigModule.forRoot({
+  isGlobal: true,  // Available in all modules
+})
+```
+
+Key configuration variables:
+- `DATABASE_URL`: PostgreSQL connection string
+- `JWT_SECRET`: Secret for JWT signing
+- `GOOGLE_CLIENT_ID`: OAuth client ID
+- `FRONTEND_URL`: Frontend application URL
+
+## Architecture Diagram
+
+```
+┌─────────────────┐
+│   React Client  │
+│   (Port 5173)   │
+└────────┬────────┘
+         │ HTTP/REST
+         ▼
+┌─────────────────┐
+│  NestJS Server  │
+│   (Port 3000)   │
+├─────────────────┤
+│  • Auth Module  │
+│  • Transactions │
+│  • Categories   │
+│  • Accounts     │
+│  • Budgets      │
+│  • Reports      │
+└────────┬────────┘
+         │ Prisma ORM
+         ▼
+┌─────────────────┐
+│   PostgreSQL    │
+│    Database     │
+└─────────────────┘
+```
+
+## Design Principles
+
+<AccordionGroup>
+  <Accordion title="Single Responsibility">
+    Each module handles one specific domain concern (auth, transactions, etc.)
+  </Accordion>
+  
+  <Accordion title="Dependency Inversion">
+    Modules depend on abstractions (interfaces) rather than concrete implementations
+  </Accordion>
+  
+  <Accordion title="Separation of Concerns">
+    Controllers handle HTTP, services contain business logic, repositories manage data
+  </Accordion>
+  
+  <Accordion title="Don't Repeat Yourself (DRY)">
+    Shared functionality is extracted to common modules and utilities
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Database Architecture" icon="database" href="/architecture/database">
+    Learn about the Prisma schema and data models
+  </Card>
+  
+  <Card title="Authentication Flow" icon="shield" href="/architecture/authentication">
+    Understand JWT and OAuth implementation
+  </Card>
+</CardGroup>

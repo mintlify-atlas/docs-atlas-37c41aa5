@@ -1,0 +1,139 @@
+---
+title: 'Register User'
+api: 'POST /api/auth/register'
+description: 'Create a new user account with email and password'
+---
+
+## Request Body
+
+<ParamField body="email" type="string" required>
+  User's email address. Must be a valid email format.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  User's password. Must be at least 8 characters and no more than 100 characters.
+</ParamField>
+
+<ParamField body="firstName" type="string" required>
+  User's first name. Minimum 2 characters.
+</ParamField>
+
+<ParamField body="lastName" type="string" required>
+  User's last name. Minimum 2 characters.
+</ParamField>
+
+<ParamField body="currency" type="string" default="ARS">
+  Preferred currency for the user's account. Examples: "USD", "EUR", "ARS"
+</ParamField>
+
+## Response
+
+<ResponseField name="user" type="object">
+  The created user object
+  
+  <Expandable title="user properties">
+    <ResponseField name="id" type="string">
+      Unique user identifier (UUID)
+    </ResponseField>
+    
+    <ResponseField name="email" type="string">
+      User's email address
+    </ResponseField>
+    
+    <ResponseField name="firstName" type="string">
+      User's first name
+    </ResponseField>
+    
+    <ResponseField name="lastName" type="string">
+      User's last name
+    </ResponseField>
+    
+    <ResponseField name="currency" type="string">
+      User's preferred currency
+    </ResponseField>
+    
+    <ResponseField name="role" type="string">
+      User's role (default: "USER")
+    </ResponseField>
+    
+    <ResponseField name="avatarUrl" type="string | null">
+      URL to user's avatar image (null for new registrations)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="token" type="string">
+  JWT authentication token for the user session
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X POST https://api.yourfinanceapp.com/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john.doe@example.com",
+    "password": "SecurePass123!",
+    "firstName": "John",
+    "lastName": "Doe",
+    "currency": "USD"
+  }'
+```
+
+## Example Response
+
+```json
+{
+  "user": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "email": "john.doe@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "currency": "USD",
+    "role": "USER",
+    "avatarUrl": null
+  },
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDAiLCJlbWFpbCI6ImpvaG4uZG9lQGV4YW1wbGUuY29tIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3MDk1NjE2MDB9.abc123def456"
+}
+```
+
+## Error Responses
+
+<ResponseField name="409 Conflict" type="error">
+  Email address is already registered
+  
+  ```json
+  {
+    "statusCode": 409,
+    "message": "El email ya está registrado",
+    "error": "Conflict"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="400 Bad Request" type="error">
+  Validation error - invalid input data
+  
+  ```json
+  {
+    "statusCode": 400,
+    "message": [
+      "email must be an email",
+      "La contraseña debe tener al menos 8 caracteres",
+      "firstName must be longer than or equal to 2 characters"
+    ],
+    "error": "Bad Request"
+  }
+  ```
+</ResponseField>
+
+## Additional Information
+
+Upon successful registration, the system automatically:
+- Creates a default wallet account ("Efectivo / Billetera") with zero balance
+- Initializes default income and expense categories
+- Sets the auth provider to `LOCAL`
+- Assigns the `USER` role
+- Sets fiscal start day to 1
+
+The returned JWT token should be stored securely and included in subsequent authenticated requests.

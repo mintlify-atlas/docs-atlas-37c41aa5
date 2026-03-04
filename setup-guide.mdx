@@ -1,0 +1,782 @@
+---
+title: "Setup Guide"
+description: "Comprehensive installation and configuration guide for Your Finance App"
+---
+
+# Setup Guide
+
+This guide provides detailed instructions for installing, configuring, and deploying Your Finance App. Whether you're setting up for local development or preparing for production, this guide has you covered.
+
+## Prerequisites
+
+### System Requirements
+
+<CardGroup cols={3}>
+  <Card title="Node.js" icon="node-js">
+    Version 18.0.0 or higher
+  </Card>
+  <Card title="pnpm" icon="package">
+    Version 8.0.0 or higher
+  </Card>
+  <Card title="PostgreSQL" icon="database">
+    Version 14+ (via Supabase)
+  </Card>
+</CardGroup>
+
+### Required Tools
+
+- **Git** - Version control system
+- **Code Editor** - VS Code recommended
+- **HTTP Client** - Postman, Thunder Client, or curl
+- **Terminal** - Command line interface
+
+### Operating System Support
+
+- **Linux** - Ubuntu 20.04+, Debian 11+, or similar
+- **macOS** - 12 (Monterey) or higher
+- **Windows** - Windows 10/11 with WSL2 recommended
+
+## Installation
+
+### Step 1: Install Node.js
+
+<Tabs>
+  <Tab title="Ubuntu/Debian">
+    Install Node.js using NodeSource:
+    
+    ```bash
+    # Download and run NodeSource setup script
+    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+    
+    # Install Node.js
+    sudo apt-get install -y nodejs
+    
+    # Verify installation
+    node --version  # Should show v18.x.x or higher
+    npm --version   # Should show 9.x.x or higher
+    ```
+  </Tab>
+  
+  <Tab title="macOS">
+    Install Node.js using Homebrew:
+    
+    ```bash
+    # Install Homebrew if you haven't already
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    
+    # Install Node.js
+    brew install node@18
+    
+    # Verify installation
+    node --version
+    npm --version
+    ```
+  </Tab>
+  
+  <Tab title="Windows">
+    **Option 1: Direct Installation**
+    
+    1. Download the installer from [nodejs.org](https://nodejs.org/)
+    2. Run the `.msi` installer
+    3. Follow the installation wizard
+    4. Restart your terminal
+    5. Verify: `node --version`
+    
+    **Option 2: Using WSL2 (Recommended)**
+    
+    1. Install WSL2 from Microsoft Store
+    2. Install Ubuntu from Microsoft Store
+    3. Follow the Ubuntu instructions above
+  </Tab>
+</Tabs>
+
+### Step 2: Install pnpm
+
+```bash
+# Install pnpm globally
+npm install -g pnpm
+
+# Verify installation
+pnpm --version  # Should show 8.x.x or higher
+```
+
+<Note>
+**Why pnpm?**
+- 2-3x faster than npm
+- Saves disk space with content-addressable storage
+- Built-in monorepo workspace support
+- Strict dependency management prevents phantom dependencies
+</Note>
+
+### Step 3: Clone the Repository
+
+```bash
+# Create a directory for your projects
+mkdir -p ~/dev
+cd ~/dev
+
+# Clone the repository
+git clone https://github.com/RoAriel/your-finance-app.git
+cd your-finance-app
+
+# Explore the structure
+ls -la
+```
+
+You should see:
+```
+drwxr-xr-x  apps/
+drwxr-xr-x  docs/
+-rw-r--r--  package.json
+-rw-r--r--  pnpm-workspace.yaml
+-rw-r--r--  README.md
+```
+
+## Database Setup
+
+### Creating a Supabase Project
+
+<Steps>
+  <Step title="Sign up for Supabase">
+    1. Go to [supabase.com](https://supabase.com)
+    2. Click **"Start your project"**
+    3. Sign up with GitHub (recommended) or email
+  </Step>
+  
+  <Step title="Create a new project">
+    1. Click **"New Project"** from your dashboard
+    2. Fill in the project details:
+       - **Name:** `your-finance-app` (or your preferred name)
+       - **Database Password:** Generate a strong password and save it securely
+       - **Region:** Choose the closest region to your users
+       - **Pricing Plan:** Free (includes 500MB database, 1GB file storage)
+    3. Click **"Create new project"**
+    4. Wait approximately 2 minutes for provisioning
+  </Step>
+  
+  <Step title="Get connection strings">
+    Once your project is ready:
+    
+    1. Navigate to **Settings** (⚙️ icon) → **Database**
+    2. Scroll to **Connection string** section
+    3. Select **URI** from the mode dropdown
+    4. You'll see two connection types:
+    
+    **Transaction Mode (Port 6543)** - Use for application queries:
+    ```
+    postgresql://postgres.xxxxx:PASSWORD@aws-0-sa-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+    ```
+    
+    **Session Mode (Port 5432)** - Use for migrations:
+    ```
+    postgresql://postgres.xxxxx:PASSWORD@aws-0-sa-east-1.pooler.supabase.com:5432/postgres
+    ```
+    
+    <Warning>
+    Copy both connection strings - you'll need them in the next step. Replace `PASSWORD` with your actual database password.
+    </Warning>
+  </Step>
+</Steps>
+
+### Understanding Connection Modes
+
+<Tabs>
+  <Tab title="Transaction Mode">
+    **Port: 6543**
+    
+    Used for regular application queries through PgBouncer connection pooler.
+    
+    **Advantages:**
+    - Connection pooling reduces database load
+    - Better for high-traffic applications
+    - Faster connection establishment
+    
+    **Use for:**
+    - Application runtime queries
+    - Production environments
+    - Any SELECT, INSERT, UPDATE, DELETE operations
+  </Tab>
+  
+  <Tab title="Session Mode">
+    **Port: 5432**
+    
+    Direct connection to PostgreSQL without pooling.
+    
+    **Advantages:**
+    - Full PostgreSQL feature support
+    - Required for schema changes
+    - Necessary for transactions requiring session state
+    
+    **Use for:**
+    - Running migrations
+    - Database introspection
+    - Schema modifications
+  </Tab>
+</Tabs>
+
+## Environment Configuration
+
+### Setting Up Environment Variables
+
+<Steps>
+  <Step title="Copy the example file">
+    ```bash
+    cd apps/backend
+    cp .env.example .env
+    ```
+  </Step>
+  
+  <Step title="Edit the .env file">
+    Open `apps/backend/.env` in your editor and configure:
+    
+    ```env
+    # ===========================================
+    # DATABASE CONFIGURATION
+    # ===========================================
+    
+    # Transaction mode (port 6543) - For application queries
+    DATABASE_URL="postgresql://postgres.PROJECT_ID:YOUR_PASSWORD@REGION.pooler.supabase.com:6543/postgres?pgbouncer=true"
+    
+    # Session mode (port 5432) - For migrations
+    DIRECT_URL="postgresql://postgres.PROJECT_ID:YOUR_PASSWORD@REGION.pooler.supabase.com:5432/postgres"
+    
+    # ===========================================
+    # JWT CONFIGURATION
+    # ===========================================
+    
+    # Secret key for signing JWT tokens
+    JWT_SECRET="your-secure-secret-key-here"
+    
+    # Token expiration time (examples: 7d, 24h, 60m)
+    JWT_EXPIRES_IN="7d"
+    ```
+  </Step>
+  
+  <Step title="Generate a secure JWT secret">
+    Use Node.js to generate a cryptographically secure random string:
+    
+    ```bash
+    node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+    ```
+    
+    Example output:
+    ```
+    a3d8f9e2b1c4567890abcdef1234567890abcdef1234567890abcdef123456
+    ```
+    
+    Copy this value and paste it as your `JWT_SECRET`.
+  </Step>
+  
+  <Step title="Replace placeholders">
+    In your `.env` file, replace:
+    - `PROJECT_ID` - Your Supabase project ID (from connection string)
+    - `YOUR_PASSWORD` - Your Supabase database password
+    - `REGION` - Your database region (e.g., `aws-0-sa-east-1`)
+    - `your-secure-secret-key-here` - The generated JWT secret
+  </Step>
+</Steps>
+
+### Environment Variables Explained
+
+<ParamField path="DATABASE_URL" type="string" required>
+  Connection string for application queries. Uses transaction mode (port 6543) with PgBouncer pooling.
+</ParamField>
+
+<ParamField path="DIRECT_URL" type="string" required>
+  Connection string for migrations. Uses session mode (port 5432) for direct PostgreSQL access.
+</ParamField>
+
+<ParamField path="JWT_SECRET" type="string" required>
+  Secret key used to sign and verify JWT tokens. Must be a long, random string. Never share this or commit it to version control.
+</ParamField>
+
+<ParamField path="JWT_EXPIRES_IN" type="string" default="7d">
+  How long JWT tokens remain valid. Accepts formats like `7d` (days), `24h` (hours), `60m` (minutes).
+</ParamField>
+
+<Warning>
+**Security Best Practices:**
+- Never commit `.env` files to version control
+- Use different secrets for development and production
+- Rotate JWT secrets periodically in production
+- Use strong, unique database passwords
+</Warning>
+
+## Installing Dependencies
+
+### Install Workspace Dependencies
+
+```bash
+# From the project root
+cd ~/dev/your-finance-app
+
+# Install all dependencies for the monorepo
+pnpm install
+```
+
+This command:
+1. Reads `pnpm-workspace.yaml` to identify workspaces
+2. Installs dependencies for all workspace packages
+3. Creates symlinks between local packages
+4. Downloads and caches external dependencies
+
+**Installation includes:**
+- NestJS framework and modules
+- Prisma ORM and client
+- Authentication libraries (Passport, JWT, bcrypt)
+- Validation libraries (class-validator, class-transformer)
+- Development tools (ESLint, Prettier, TypeScript)
+
+<Note>
+First installation typically takes 2-5 minutes depending on your internet speed. Subsequent installs are much faster due to pnpm's caching.
+</Note>
+
+### Verify Installation
+
+```bash
+# Check that node_modules were created
+ls -la node_modules/
+ls -la apps/backend/node_modules/
+
+# View installed packages
+pnpm list --depth=0
+```
+
+## Database Migrations
+
+### Running Migrations
+
+<Steps>
+  <Step title="Generate Prisma Client">
+    Generate TypeScript types from your Prisma schema:
+    
+    ```bash
+    cd apps/backend
+    npx prisma generate
+    ```
+    
+    This creates:
+    - Type-safe Prisma Client
+    - TypeScript interfaces for your models
+    - Auto-completion for queries
+  </Step>
+  
+  <Step title="Deploy migrations">
+    Apply all pending migrations to your database:
+    
+    ```bash
+    npx prisma migrate deploy
+    ```
+    
+    Expected output:
+    ```
+    Applying migration `20260104185727_init`
+    Applying migration `20260109000725_add_transactions_and_categories`
+    
+    The following migration(s) have been applied:
+    
+    migrations/
+      └─ 20260104185727_init/
+        └─ migration.sql
+      └─ 20260109000725_add_transactions_and_categories/
+        └─ migration.sql
+    
+    All migrations have been successfully applied.
+    ```
+  </Step>
+  
+  <Step title="Verify in Supabase">
+    Check that tables were created:
+    
+    1. Go to your Supabase dashboard
+    2. Click **Table Editor**
+    3. Verify these tables exist:
+       - ✅ `users` - User accounts
+       - ✅ `transactions` - Financial transactions
+       - ✅ `categories` - Transaction categories
+  </Step>
+</Steps>
+
+### Understanding the Schema
+
+The Prisma schema defines three main models:
+
+<CodeGroup>
+```prisma Users Table
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  transactions Transaction[]
+  
+  @@map("users")
+}
+```
+
+```prisma Transactions Table
+model Transaction {
+  id          String       @id @default(uuid())
+  type        TransactionType
+  amount      Float
+  description String?
+  currency    Currency     @default(USD)
+  date        DateTime     @default(now())
+  categoryId  String?
+  userId      String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
+  
+  user        User         @relation(fields: [userId], references: [id])
+  category    Category?    @relation(fields: [categoryId], references: [id])
+  
+  @@map("transactions")
+}
+```
+
+```prisma Categories Table
+model Category {
+  id           String        @id @default(uuid())
+  name         String
+  description  String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  
+  transactions Transaction[]
+  
+  @@map("categories")
+}
+```
+</CodeGroup>
+
+## Running the Application
+
+### Development Mode
+
+Start the server with hot-reload enabled:
+
+```bash
+# From project root
+pnpm dev:backend
+
+# Or from apps/backend directory
+cd apps/backend
+pnpm run start:dev
+```
+
+**What happens:**
+1. NestJS compiles TypeScript to JavaScript
+2. Starts the server on port 3000
+3. Watches for file changes
+4. Auto-restarts on code modifications
+
+**Expected console output:**
+
+```
+[Nest] 12345  - 03/04/2026, 10:30:00 AM     LOG [NestFactory] Starting Nest application...
+[Nest] 12345  - 03/04/2026, 10:30:00 AM     LOG [InstanceLoader] PrismaModule dependencies initialized +20ms
+[Nest] 12345  - 03/04/2026, 10:30:00 AM     LOG [InstanceLoader] ConfigModule dependencies initialized +5ms
+[Nest] 12345  - 03/04/2026, 10:30:00 AM     LOG [InstanceLoader] AuthModule dependencies initialized +15ms
+[Nest] 12345  - 03/04/2026, 10:30:00 AM     LOG [InstanceLoader] TransactionsModule dependencies initialized +10ms
+[Nest] 12345  - 03/04/2026, 10:30:00 AM     LOG [RoutesResolver] AppController {/}: +8ms
+[Nest] 12345  - 03/04/2026, 10:30:00 AM     LOG [RouterExplorer] Mapped {/, GET} route +3ms
+[Nest] 12345  - 03/04/2026, 10:30:00 AM     LOG [RoutesResolver] AuthController {/auth}: +1ms
+[Nest] 12345  - 03/04/2026, 10:30:00 AM     LOG [RouterExplorer] Mapped {/auth/register, POST} route +2ms
+[Nest] 12345  - 03/04/2026, 10:30:00 AM     LOG [RouterExplorer] Mapped {/auth/login, POST} route +1ms
+[Nest] 12345  - 03/04/2026, 10:30:00 AM     LOG [RouterExplorer] Mapped {/auth/profile, GET} route +1ms
+[Nest] 12345  - 03/04/2026, 10:30:00 AM     LOG [RoutesResolver] TransactionsController {/transactions}: +1ms
+[Nest] 12345  - 03/04/2026, 10:30:00 AM     LOG [RouterExplorer] Mapped {/transactions, POST} route +1ms
+[Nest] 12345  - 03/04/2026, 10:30:00 AM     LOG [RouterExplorer] Mapped {/transactions, GET} route +1ms
+[Nest] 12345  - 03/04/2026, 10:30:00 AM     LOG [RouterExplorer] Mapped {/transactions/balance, GET} route +0ms
+[Nest] 12345  - 03/04/2026, 10:30:00 AM     LOG [NestApplication] Nest application successfully started +5ms
+```
+
+<Note>
+The server is now running at `http://localhost:3000`
+</Note>
+
+### Production Mode
+
+Build and run for production:
+
+```bash
+# Build the application
+pnpm run build
+
+# Start in production mode
+pnpm run start:prod
+```
+
+**Differences from development:**
+- Code is optimized and minified
+- No file watching or hot reload
+- Better performance
+- Source maps disabled
+
+## Testing the Installation
+
+### Test Health Endpoint
+
+```bash
+curl http://localhost:3000
+# Expected: "Hello World!"
+```
+
+### Test User Registration
+
+```bash
+curl -X POST http://localhost:3000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "alice@example.com",
+    "password": "SecurePass123!",
+    "name": "Alice Johnson"
+  }'
+```
+
+**Expected response:**
+```json
+{
+  "user": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "email": "alice@example.com",
+    "name": "Alice Johnson",
+    "createdAt": "2026-03-04T10:30:00.000Z",
+    "updatedAt": "2026-03-04T10:30:00.000Z"
+  },
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDAiLCJlbWFpbCI6ImFsaWNlQGV4YW1wbGUuY29tIiwiaWF0IjoxNzA5NTUwNjAwLCJleHAiOjE3MTAxNTU0MDB9.signature"
+}
+```
+
+### Test Authentication
+
+```bash
+# Save the token
+TOKEN="your-token-from-registration"
+
+# Get user profile
+curl http://localhost:3000/auth/profile \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Test Transaction Creation
+
+```bash
+curl -X POST http://localhost:3000/transactions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "type": "expense",
+    "amount": 1250.50,
+    "description": "Grocery shopping",
+    "currency": "USD"
+  }'
+```
+
+## Troubleshooting
+
+### Common Issues and Solutions
+
+<AccordionGroup>
+  <Accordion title="Cannot find module '@nestjs/core'">
+    **Cause:** Dependencies not installed or corrupted.
+    
+    **Solution:**
+    ```bash
+    cd apps/backend
+    rm -rf node_modules
+    pnpm install
+    ```
+  </Accordion>
+  
+  <Accordion title="Environment variable not found: DATABASE_URL">
+    **Cause:** `.env` file missing or not in correct location.
+    
+    **Solution:**
+    ```bash
+    # Ensure .env exists in apps/backend/
+    ls -la apps/backend/.env
+    
+    # If missing, copy from example
+    cp apps/backend/.env.example apps/backend/.env
+    
+    # Edit with your values
+    nano apps/backend/.env
+    ```
+  </Accordion>
+  
+  <Accordion title="connect ECONNREFUSED or timeout">
+    **Cause:** Cannot connect to database.
+    
+    **Solutions:**
+    1. Verify Supabase project is running (check dashboard)
+    2. Confirm connection strings are correct
+    3. Check password doesn't contain special characters that need escaping
+    4. Ensure no trailing spaces in `.env` file
+    5. Try pinging the database host
+    
+    ```bash
+    # Test connection with psql
+    psql "postgresql://postgres.xxxxx:PASSWORD@REGION.pooler.supabase.com:5432/postgres"
+    ```
+  </Accordion>
+  
+  <Accordion title="Error: P1001 - Can't reach database server">
+    **Cause:** Network or firewall issue.
+    
+    **Solutions:**
+    1. Check your internet connection
+    2. Verify firewall isn't blocking ports 5432/6543
+    3. Try using a different network
+    4. Check if your organization blocks PostgreSQL ports
+  </Accordion>
+  
+  <Accordion title="Port 3000 is already in use">
+    **Cause:** Another process is using port 3000.
+    
+    **Solutions:**
+    
+    Find and kill the process:
+    ```bash
+    # On Mac/Linux
+    lsof -i :3000
+    kill -9 <PID>
+    
+    # On Windows
+    netstat -ano | findstr :3000
+    taskkill /PID <PID> /F
+    ```
+    
+    Or change the port in `apps/backend/src/main.ts`:
+    ```typescript
+    await app.listen(process.env.PORT || 3001);
+    ```
+  </Accordion>
+  
+  <Accordion title="Prisma Client not generated">
+    **Cause:** Prisma Client wasn't generated after schema changes.
+    
+    **Solution:**
+    ```bash
+    cd apps/backend
+    npx prisma generate
+    ```
+  </Accordion>
+  
+  <Accordion title="Migration failed: Table already exists">
+    **Cause:** Database state doesn't match migration history.
+    
+    **Solution:**
+    ```bash
+    # Reset database (WARNING: Deletes all data)
+    npx prisma migrate reset
+    
+    # Or manually resolve in Supabase dashboard
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Getting More Help
+
+<CardGroup cols={2}>
+  <Card title="Check Logs" icon="file-lines">
+    Review server logs for detailed error messages
+  </Card>
+  <Card title="Prisma Studio" icon="database">
+    Use `npx prisma studio` to inspect database
+  </Card>
+  <Card title="GitHub Issues" icon="github">
+    Search or open issues on GitHub repository
+  </Card>
+  <Card title="Documentation" icon="book">
+    Review NestJS and Prisma official docs
+  </Card>
+</CardGroup>
+
+## Development Tools
+
+### Recommended VS Code Extensions
+
+```json
+{
+  "recommendations": [
+    "prisma.prisma",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "rangav.vscode-thunder-client",
+    "ms-vscode.vscode-typescript-next"
+  ]
+}
+```
+
+### Useful Commands
+
+<CodeGroup>
+```bash Database Management
+# Open Prisma Studio (database GUI)
+npx prisma studio
+
+# Create a new migration
+npx prisma migrate dev --name migration_name
+
+# Reset database (WARNING: deletes data)
+npx prisma migrate reset
+
+# Seed database
+npx prisma db seed
+```
+
+```bash Development
+# Start with debugging
+pnpm run start:debug
+
+# Format code
+pnpm run format
+
+# Run linter
+pnpm run lint
+
+# Run tests
+pnpm run test
+```
+
+```bash Production
+# Build application
+pnpm run build
+
+# Start production server
+pnpm run start:prod
+
+# Run migrations in production
+npx prisma migrate deploy
+```
+</CodeGroup>
+
+## Next Steps
+
+Now that you have Your Finance App set up and running:
+
+<CardGroup cols={2}>
+  <Card title="Explore the Architecture" icon="sitemap" href="/architecture/overview">
+    Understand the modular structure
+  </Card>
+  <Card title="Learn the Database Schema" icon="database" href="/architecture/database">
+    Deep dive into data models
+  </Card>
+  <Card title="Study Authentication" icon="lock" href="/architecture/authentication">
+    Learn how JWT auth works
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/authentication/register">
+    Explore all endpoints
+  </Card>
+</CardGroup>
+
+---
+
+<Note>
+**Pro Tip:** Keep your `.env` file secure and never commit it to version control. Use environment-specific `.env` files for different deployment environments.
+</Note>

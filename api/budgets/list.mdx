@@ -1,0 +1,163 @@
+---
+title: "List Budgets"
+api: "GET /api/budgets"
+description: "Get a hierarchical report of budgets with spending progress"
+---
+
+## Authentication
+
+This endpoint requires JWT authentication via Bearer token.
+
+## Query Parameters
+
+<ParamField query="month" type="integer">
+  Filter by month (1-12). Defaults to current month if not provided.
+</ParamField>
+
+<ParamField query="year" type="integer">
+  Filter by year. Defaults to current year if not provided.
+</ParamField>
+
+## Response Structure
+
+Returns a hierarchical tree of budget reports. Each node includes direct spending and recursive spending (including child categories).
+
+<ResponseField name="id" type="string">
+  Budget ID (if budget exists for this category)
+</ResponseField>
+
+<ResponseField name="categoryId" type="string">
+  Category UUID
+</ResponseField>
+
+<ResponseField name="categoryName" type="string">
+  Category name
+</ResponseField>
+
+<ResponseField name="categoryColor" type="string">
+  Hex color code for the category
+</ResponseField>
+
+<ResponseField name="categoryIcon" type="string">
+  Icon identifier for the category
+</ResponseField>
+
+<ResponseField name="amount" type="number">
+  Budget limit amount (0 if no budget set)
+</ResponseField>
+
+<ResponseField name="spent" type="number">
+  Total spent recursively (includes spending in child categories)
+</ResponseField>
+
+<ResponseField name="directSpent" type="number">
+  Amount spent directly in this category (excludes children)
+</ResponseField>
+
+<ResponseField name="remaining" type="number">
+  Remaining budget amount (max of 0 and amount - spent)
+</ResponseField>
+
+<ResponseField name="percentage" type="number">
+  Percentage of budget spent (0-100+)
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Budget status indicator:
+  - `OK`: Less than 80% spent
+  - `WARNING`: 80-99% spent
+  - `EXCEEDED`: 100% or more spent
+  - `UNBUDGETED`: No budget set for this category
+</ResponseField>
+
+<ResponseField name="children" type="array">
+  Array of child budget reports with the same structure
+</ResponseField>
+
+<ResponseExample>
+```json
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "categoryId": "660e8400-e29b-41d4-a716-446655440001",
+    "categoryName": "Food & Dining",
+    "categoryColor": "#FF6B6B",
+    "categoryIcon": "Utensils",
+    "amount": 50000,
+    "spent": 42000,
+    "directSpent": 30000,
+    "remaining": 8000,
+    "percentage": 84,
+    "status": "WARNING",
+    "children": [
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440010",
+        "categoryId": "660e8400-e29b-41d4-a716-446655440011",
+        "categoryName": "Restaurants",
+        "categoryColor": "#FF6B6B",
+        "categoryIcon": "Restaurant",
+        "amount": 20000,
+        "spent": 12000,
+        "directSpent": 12000,
+        "remaining": 8000,
+        "percentage": 60,
+        "status": "OK",
+        "children": []
+      }
+    ]
+  },
+  {
+    "categoryId": "660e8400-e29b-41d4-a716-446655440002",
+    "categoryName": "Uncategorized",
+    "categoryColor": "#cccccc",
+    "categoryIcon": "Wallet",
+    "amount": 0,
+    "spent": 5000,
+    "directSpent": 5000,
+    "remaining": 0,
+    "percentage": 0,
+    "status": "UNBUDGETED",
+    "children": []
+  }
+]
+```
+</ResponseExample>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://api.yourfinanceapp.com/api/budgets?month=1&year=2026" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://api.yourfinanceapp.com/api/budgets?month=1&year=2026',
+  {
+    headers: {
+      'Authorization': 'Bearer YOUR_TOKEN'
+    }
+  }
+);
+
+const budgets = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://api.yourfinanceapp.com/api/budgets',
+    headers={'Authorization': 'Bearer YOUR_TOKEN'},
+    params={'month': 1, 'year': 2026}
+)
+
+budgets = response.json()
+```
+</RequestExample>
+
+## Notes
+
+- All spending calculations respect the user's timezone setting
+- The hierarchy reflects the category parent-child relationships
+- Categories without budgets are still included with `status: "UNBUDGETED"`
+- Recursive spending aggregation ensures parent categories show total spending across all children

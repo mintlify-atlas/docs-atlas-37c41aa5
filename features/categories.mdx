@@ -1,0 +1,384 @@
+---
+title: 'Categories'
+description: 'Organize your finances with flexible hierarchical categories'
+icon: 'folder-tree'
+---
+
+## Overview
+
+Categories help you organize and understand your financial activity. Your Finance App supports hierarchical categories with parent-child relationships, allowing you to create detailed breakdowns while maintaining high-level summaries.
+
+<CardGroup cols={2}>
+  <Card title="Hierarchical Structure" icon="sitemap">
+    Create parent categories with subcategories for detailed organization
+  </Card>
+  <Card title="Custom Icons & Colors" icon="palette">
+    Personalize categories with hex colors and icon names for visual clarity
+  </Card>
+  <Card title="Fixed Expenses" icon="calendar-check">
+    Mark categories as fixed to track recurring monthly obligations
+  </Card>
+  <Card title="Flexible Types" icon="arrows-split-up-and-left">
+    Categories can be INCOME, EXPENSE, or BOTH for maximum flexibility
+  </Card>
+</CardGroup>
+
+## Category Types
+
+Each category has a type that determines which transactions can use it:
+
+- **INCOME**: Only for income transactions (e.g., Salary, Freelance, Gifts)
+- **EXPENSE**: Only for expense transactions (e.g., Food, Rent, Transportation)
+- **BOTH**: Can be used for both income and expenses (e.g., Reimbursements)
+
+## Default Categories
+
+When you create an account, the system can seed default categories for you:
+
+```bash
+POST /categories/seed
+```
+
+This creates a comprehensive category hierarchy including:
+
+**Expense Categories:**
+- Vivienda (Housing): Alquiler, Servicios, Mantenimiento
+- Alimentos (Food): Supermercado, Restaurantes, Delivery
+- Transporte (Transportation): Combustible, Transporte Público, Mantenimiento
+- Salud (Health): Medicamentos, Consultas, Gimnasio
+- And many more...
+
+**Income Categories:**
+- Salario (Salary)
+- Freelance
+- Inversiones (Investments)
+- Otros Ingresos (Other Income)
+
+<Note>
+  Default categories are marked as `isFixed: false` and can be edited or deleted. Only create the seed once per user.
+</Note>
+
+## Creating Custom Categories
+
+Create a new category with POST `/categories`:
+
+```json
+{
+  "name": "Entertainment",
+  "type": "EXPENSE",
+  "color": "#FF5733",
+  "icon": "popcorn",
+  "isFixed": false
+}
+```
+
+### Request Parameters
+
+<ParamField path="name" type="string" required>
+  Category name (2-50 characters, must be unique per user)
+</ParamField>
+
+<ParamField path="type" type="enum" required>
+  Category type: `INCOME`, `EXPENSE`, or `BOTH`
+</ParamField>
+
+<ParamField path="color" type="string">
+  Hex color code (e.g., #FF5733) for visual identification
+</ParamField>
+
+<ParamField path="icon" type="string">
+  Icon name (max 50 characters)
+</ParamField>
+
+<ParamField path="isFixed" type="boolean">
+  Whether this represents a fixed monthly expense (default: false)
+</ParamField>
+
+<ParamField path="parentId" type="string">
+  UUID of parent category to create a subcategory
+</ParamField>
+
+## Hierarchical Organization
+
+Create subcategories by setting a `parentId`:
+
+```json
+// 1. Create parent category
+POST /categories
+{
+  "name": "Transportation",
+  "type": "EXPENSE",
+  "color": "#3B82F6",
+  "icon": "car"
+}
+// Response: { "id": "parent-uuid", ... }
+
+// 2. Create subcategory
+POST /categories
+{
+  "name": "Gas",
+  "type": "EXPENSE",
+  "color": "#3B82F6",
+  "icon": "gas-pump",
+  "parentId": "parent-uuid"
+}
+```
+
+<Warning>
+  **Nesting Limit**: The system currently supports 2 levels (parent + child). You cannot create a subcategory of a subcategory.
+</Warning>
+
+### Hierarchy Rules
+
+<AccordionGroup>
+  <Accordion title="Parent Validation">
+    When creating a subcategory:
+    - The parent must exist and belong to you
+    - The parent cannot itself be a subcategory
+    - This prevents overly complex hierarchies
+  </Accordion>
+  
+  <Accordion title="Deletion Cascade">
+    When deleting a parent category:
+    - All child categories are also soft-deleted
+    - Transactions keep their category references
+    - The operation is atomic (all or nothing)
+  </Accordion>
+</AccordionGroup>
+
+## Listing Categories
+
+Retrieve all categories with optional filtering:
+
+```bash
+GET /categories?page=1&limit=20&type=EXPENSE
+```
+
+### Query Parameters
+
+- **page** (number): Page number (default: 1)
+- **limit** (number): Results per page (default: 20)
+- **type** (enum): Filter by INCOME, EXPENSE, or BOTH
+
+### Response Format
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "name": "Transportation",
+      "type": "EXPENSE",
+      "color": "#3B82F6",
+      "icon": "car",
+      "isFixed": false,
+      "parentId": null,
+      "userId": "user-uuid",
+      "createdAt": "2026-03-01T10:00:00.000Z",
+      "updatedAt": "2026-03-01T10:00:00.000Z",
+      "deletedAt": null
+    },
+    {
+      "id": "child-uuid",
+      "name": "Gas",
+      "type": "EXPENSE",
+      "color": "#3B82F6",
+      "icon": "gas-pump",
+      "isFixed": false,
+      "parentId": "uuid",
+      "userId": "user-uuid",
+      "createdAt": "2026-03-01T10:05:00.000Z",
+      "updatedAt": "2026-03-01T10:05:00.000Z",
+      "deletedAt": null
+    }
+  ],
+  "meta": {
+    "total": 45,
+    "page": 1,
+    "limit": 20,
+    "totalPages": 3
+  }
+}
+```
+
+<Note>
+  Categories are returned as a flat list. Use the `parentId` field to build the hierarchy on the client side.
+</Note>
+
+## Getting a Single Category
+
+Retrieve a category with its relationships:
+
+```bash
+GET /categories/:id
+```
+
+Response includes:
+- The category itself
+- `children`: Array of subcategories
+- `parent`: Parent category object (if this is a subcategory)
+
+```json
+{
+  "id": "uuid",
+  "name": "Transportation",
+  "type": "EXPENSE",
+  "color": "#3B82F6",
+  "icon": "car",
+  "isFixed": false,
+  "parentId": null,
+  "children": [
+    {
+      "id": "child-uuid",
+      "name": "Gas",
+      "type": "EXPENSE",
+      "parentId": "uuid"
+    }
+  ],
+  "parent": null
+}
+```
+
+## Updating Categories
+
+Update an existing category with PATCH `/categories/:id`:
+
+```json
+{
+  "name": "Transport",
+  "color": "#2563EB",
+  "isFixed": true
+}
+```
+
+### Validation Rules
+
+- **Name uniqueness**: If changing the name, it must not conflict with another category
+- **Parent changes**: If changing `parentId`, all parent validation rules apply
+- **No self-reference**: A category cannot be its own parent
+
+## Fixed Expenses
+
+Mark categories as fixed to identify recurring monthly obligations:
+
+```json
+{
+  "name": "Rent",
+  "type": "EXPENSE",
+  "isFixed": true
+}
+```
+
+Fixed categories help you:
+- Distinguish between fixed and variable expenses in reports
+- Plan your monthly budget more accurately
+- Identify opportunities to reduce recurring costs
+
+## Category-Transaction Coherence
+
+The system enforces type coherence between categories and transactions:
+
+<Accordion title="Valid Combinations">
+  - **INCOME transaction** → INCOME or BOTH category ✅
+  - **EXPENSE transaction** → EXPENSE or BOTH category ✅
+  - **INCOME transaction** → EXPENSE category ❌
+  - **EXPENSE transaction** → INCOME category ❌
+</Accordion>
+
+Attempting an invalid combination returns:
+```json
+{
+  "statusCode": 400,
+  "message": "No puedes crear una transacción de tipo EXPENSE con una categoría de tipo INCOME"
+}
+```
+
+## Soft Delete
+
+Deleting a category soft-deletes it and all its children:
+
+```bash
+DELETE /categories/:id
+```
+
+Response:
+```json
+{
+  "message": "Category deleted successfully",
+  "childrenDeleted": 3
+}
+```
+
+<Note>
+  Soft-deleted categories:
+  - Won't appear in category lists
+  - Can still be referenced by existing transactions
+  - Preserve data integrity in your financial history
+</Note>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Start with Defaults">
+    Use the `/categories/seed` endpoint to get started quickly. You can always customize later.
+  </Accordion>
+  
+  <Accordion title="Keep Hierarchies Simple">
+    Limit to 2 levels (parent + child). Deep hierarchies make reports harder to understand.
+  </Accordion>
+  
+  <Accordion title="Use Consistent Colors">
+    Group related categories with similar colors (e.g., all food categories in shades of green).
+  </Accordion>
+  
+  <Accordion title="Mark True Fixed Expenses">
+    Only use `isFixed: true` for expenses that recur monthly at the same amount (rent, subscriptions).
+  </Accordion>
+  
+  <Accordion title="Avoid Too Many Categories">
+    15-25 categories is usually enough. Too many categories make budgeting complex.
+  </Accordion>
+</AccordionGroup>
+
+## Common Workflows
+
+### Setting Up Your Categories
+
+```bash
+# 1. Seed default categories
+POST /categories/seed
+
+# 2. Add custom categories for your needs
+POST /categories
+{
+  "name": "Side Projects",
+  "type": "INCOME",
+  "color": "#10B981",
+  "icon": "code"
+}
+
+# 3. Create subcategories for detail
+POST /categories
+{
+  "name": "Consulting",
+  "type": "INCOME",
+  "parentId": "side-projects-uuid",
+  "color": "#10B981"
+}
+```
+
+### Reorganizing Categories
+
+```bash
+# Change a subcategory's parent
+PATCH /categories/:id
+{
+  "parentId": "new-parent-uuid"
+}
+
+# Convert to top-level category
+PATCH /categories/:id
+{
+  "parentId": null
+}
+```

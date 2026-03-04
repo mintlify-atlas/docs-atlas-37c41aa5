@@ -1,0 +1,740 @@
+---
+title: 'Production Deployment'
+description: 'Deploy Your Finance App to production with confidence'
+icon: 'rocket'
+---
+
+## Overview
+
+This guide covers deploying Your Finance App to production, including environment configuration, database migrations, monitoring, and performance optimization.
+
+## Environment Configuration
+
+### Required Environment Variables
+
+Create a production `.env` file with these required variables:
+
+```bash .env
+# Database Configuration
+DATABASE_URL="postgresql://user:password@host:6543/db?pgbouncer=true"
+DIRECT_URL="postgresql://user:password@host:5432/db"
+
+# JWT Configuration
+JWT_SECRET="your-random-32-char-secret-key-here"
+JWT_EXPIRES_IN="7d"
+
+# Application
+NODE_ENV="production"
+PORT="3000"
+
+# Frontend URL (for CORS)
+FRONTEND_URL="https://your-frontend-domain.com"
+```
+
+<Warning>
+Never use default or weak secrets in production. Generate strong secrets using:
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+</Warning>
+
+### Environment Variable Security
+
+<Steps>
+  <Step title="Use a Secret Manager">
+    Store sensitive variables in:
+    - AWS Secrets Manager
+    - Google Cloud Secret Manager
+    - Azure Key Vault
+    - Railway/Vercel encrypted environment variables
+  </Step>
+  
+  <Step title="Never Commit Secrets">
+    Add to `.gitignore`:
+    ```bash .gitignore
+    .env
+    .env.local
+    .env.production
+    .env.*.local
+    ```
+  </Step>
+  
+  <Step title="Use .env.example as Template">
+    Provide a template for required variables:
+    ```bash .env.example
+    DATABASE_URL="postgresql://..."
+    JWT_SECRET="change-me-in-production"
+    ```
+  </Step>
+  
+  <Step title="Validate on Startup">
+    Add validation in your app:
+    ```typescript
+    const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET', 'FRONTEND_URL'];
+    
+    for (const envVar of requiredEnvVars) {
+      if (!process.env[envVar]) {
+        throw new Error(`Missing required environment variable: ${envVar}`);
+      }
+    }
+    ```
+  </Step>
+</Steps>
+
+## Database Setup
+
+### Using Supabase (Recommended)
+
+Your Finance App is configured for Supabase PostgreSQL:
+
+<Steps>
+  <Step title="Create Supabase Project">
+    1. Go to [supabase.com](https://supabase.com)
+    2. Create a new project
+    3. Wait for database provisioning
+  </Step>
+  
+  <Step title="Get Connection Strings">
+    Navigate to **Settings → Database** and copy:
+    
+    - **Transaction Mode** (port 6543) → `DATABASE_URL`
+    - **Session Mode** (port 5432) → `DIRECT_URL`
+    
+    ```bash
+    # Transaction mode - for queries (pooled)
+    DATABASE_URL="postgresql://postgres.xxxxx:password@aws-0-us-west-2.pooler.supabase.com:6543/postgres?pgbouncer=true"
+    
+    # Session mode - for migrations (direct)
+    DIRECT_URL="postgresql://postgres.xxxxx:password@aws-0-us-west-2.pooler.supabase.com:5432/postgres"
+    ```
+  </Step>
+  
+  <Step title="Configure Prisma">
+    Your `schema.prisma` is already configured:
+    ```prisma schema.prisma
+    datasource db {
+      provider  = "postgresql"
+      url       = env("DATABASE_URL")
+      directUrl = env("DIRECT_URL")
+    }
+    ```
+  </Step>
+</Steps>
+
+<Info>
+Supabase uses connection pooling (PgBouncer) on port 6543 for better performance. Migrations require direct connection on port 5432.
+</Info>
+
+### Database Migrations in Production
+
+<Warning>
+Always backup your database before running migrations in production!
+</Warning>
+
+#### Safe Migration Process
+
+```bash
+# 1. Review pending migrations
+pnpm prisma migrate status
+
+# 2. Generate a deployment script (dry run)
+pnpm prisma migrate deploy --preview-feature
+
+# 3. Backup database (Supabase Dashboard → Database → Backups)
+
+# 4. Deploy migrations
+pnpm prisma migrate deploy
+
+# 5. Verify schema
+pnpm prisma db pull
+pnpm prisma validate
+```
+
+#### Migration Strategy
+
+<AccordionGroup>
+  <Accordion title="Non-Breaking Changes" icon="check">
+    Safe to deploy directly:
+    - Adding new tables
+    - Adding nullable columns
+    - Adding indexes
+    - Creating new enums
+    
+    ```bash
+    pnpm prisma migrate deploy
+    ```
+  </Accordion>
+  
+  <Accordion title="Breaking Changes" icon="triangle-exclamation">
+    Require careful planning:
+    - Renaming columns
+    - Deleting columns
+    - Changing column types
+    - Adding non-nullable columns
+    
+    Use a multi-step migration:
+    1. Add new column (nullable)
+    2. Backfill data
+    3. Make non-nullable
+    4. Remove old column
+  </Accordion>
+  
+  <Accordion title="Rollback Strategy" icon="rotate-left">
+    If a migration fails:
+    ```bash
+    # Mark migration as rolled back
+    pnpm prisma migrate resolve --rolled-back "20231201000000_migration_name"
+    
+    # Restore from backup
+    # (Use Supabase Dashboard → Database → Backups)
+    
+    # Fix migration issue
+    # Create new migration
+    pnpm prisma migrate dev
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Initial Data Seeding
+
+The app includes a seed script for default categories:
+
+```typescript apps/backend/prisma/seed.ts
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  // Seed default categories, demo user, etc.
+  console.log('Seeding database...');
+  
+  // Example: Create default categories
+  await prisma.category.createMany({
+    data: DEFAULT_CATEGORIES
+  });
+}
+
+main()
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());
+```
+
+Run the seed:
+
+```bash
+pnpm --filter backend prisma db seed
+```
+
+## Deployment Platforms
+
+### Railway (Recommended)
+
+Railway provides easy deployment with automatic builds:
+
+<Steps>
+  <Step title="Connect Repository">
+    1. Go to [railway.app](https://railway.app)
+    2. Create new project
+    3. Connect your GitHub repository
+  </Step>
+  
+  <Step title="Configure Service">
+    Set build and start commands:
+    ```json package.json
+    {
+      "scripts": {
+        "build": "pnpm --filter backend build",
+        "start": "pnpm --filter backend start:prod"
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="Add Environment Variables">
+    In Railway dashboard, add all required environment variables from your `.env.example`
+  </Step>
+  
+  <Step title="Deploy">
+    Railway automatically deploys on push to main branch
+  </Step>
+</Steps>
+
+### Vercel (Frontend)
+
+Deploy the frontend to Vercel:
+
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy from frontend directory
+cd apps/frontend
+vercel
+
+# Set environment variables
+vercel env add VITE_API_URL production
+```
+
+Configure `vercel.json`:
+
+```json apps/frontend/vercel.json
+{
+  "buildCommand": "pnpm build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
+```
+
+### Docker Deployment
+
+While Your Finance App doesn't include a Dockerfile by default, here's a production-ready setup:
+
+```dockerfile Dockerfile
+# Build stage
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Copy package files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/backend/package.json ./apps/backend/
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
+COPY apps/backend ./apps/backend
+
+# Generate Prisma client
+RUN pnpm --filter backend prisma generate
+
+# Build application
+RUN pnpm --filter backend build
+
+# Production stage
+FROM node:18-alpine
+
+WORKDIR /app
+
+RUN npm install -g pnpm
+
+# Copy built files and dependencies
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/backend/dist ./dist
+COPY --from=builder /app/apps/backend/node_modules ./apps/backend/node_modules
+COPY --from=builder /app/apps/backend/prisma ./prisma
+
+# Expose port
+EXPOSE 3000
+
+# Start application
+CMD ["node", "dist/main.js"]
+```
+
+Build and run:
+
+```bash
+# Build image
+docker build -t your-finance-app .
+
+# Run container
+docker run -p 3000:3000 \
+  -e DATABASE_URL="postgresql://..." \
+  -e JWT_SECRET="your-secret" \
+  your-finance-app
+```
+
+### Docker Compose
+
+For local production testing:
+
+```yaml docker-compose.yml
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - DIRECT_URL=${DIRECT_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - NODE_ENV=production
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=finance
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:
+```
+
+Run with:
+
+```bash
+docker-compose up -d
+```
+
+## Monitoring and Logging
+
+### Application Logging
+
+The app uses a custom logger utility:
+
+```typescript apps/backend/src/common/utils/logger.util.ts
+export class AppLogger {
+  constructor(private context: string) {}
+
+  log(message: string) {
+    console.log(`[${this.context}] ${message}`);
+  }
+
+  logOperation(operation: string, data: any) {
+    console.log(`[${this.context}] ${operation}:`, JSON.stringify(data));
+  }
+
+  logSuccess(operation: string, data: any) {
+    console.log(`[${this.context}] ✓ ${operation}:`, JSON.stringify(data));
+  }
+
+  logFailure(operation: string, error: Error) {
+    console.error(`[${this.context}] ✗ ${operation}:`, error.message);
+  }
+}
+```
+
+Usage in services:
+
+```typescript
+private readonly logger = new AppLogger(TransactionsService.name);
+
+async create(dto: CreateTransactionDto, userId: string) {
+  this.logger.logOperation('Create transaction', { type: dto.type, amount: dto.amount });
+  
+  try {
+    const result = await this.doCreate(dto, userId);
+    this.logger.logSuccess('Create transaction', { id: result.id });
+    return result;
+  } catch (error) {
+    this.logger.logFailure('Create transaction', error);
+    throw error;
+  }
+}
+```
+
+### Error Tracking
+
+Integrate error tracking services:
+
+<Tabs>
+  <Tab title="Sentry">
+    ```bash
+    pnpm add @sentry/node @sentry/tracing
+    ```
+    
+    ```typescript main.ts
+    import * as Sentry from '@sentry/node';
+    
+    Sentry.init({
+      dsn: process.env.SENTRY_DSN,
+      environment: process.env.NODE_ENV,
+      tracesSampleRate: 1.0
+    });
+    ```
+  </Tab>
+  
+  <Tab title="LogRocket">
+    ```bash
+    pnpm add logrocket
+    ```
+    
+    ```typescript
+    import LogRocket from 'logrocket';
+    
+    LogRocket.init('your-app-id');
+    ```
+  </Tab>
+</Tabs>
+
+### Health Checks
+
+Implement health check endpoints:
+
+```typescript apps/backend/src/app.controller.ts
+@Controller()
+export class AppController {
+  @Get('health')
+  healthCheck() {
+    return {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime()
+    };
+  }
+
+  @Get('health/db')
+  async databaseHealth() {
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+      return { status: 'ok', database: 'connected' };
+    } catch (error) {
+      return { status: 'error', database: 'disconnected' };
+    }
+  }
+}
+```
+
+## Performance Optimization
+
+### Enable Production Mode
+
+```bash
+NODE_ENV=production pnpm start:prod
+```
+
+This enables:
+- Optimized builds
+- Disabled debug logs
+- Better error handling
+- Performance optimizations
+
+### Database Connection Pooling
+
+Optimize Prisma connection settings:
+
+```env
+DATABASE_URL="postgresql://user:password@host:6543/db?pgbouncer=true&connection_limit=10&pool_timeout=20"
+```
+
+<Info>
+Connection pooling limits are based on your plan:
+- **Free tier**: 10 connections
+- **Pro tier**: 50 connections
+- **Enterprise**: Custom
+</Info>
+
+### Response Compression
+
+Enable compression middleware:
+
+```typescript main.ts
+import compression from 'compression';
+
+app.use(compression());
+```
+
+### Rate Limiting
+
+Protect against abuse:
+
+```bash
+pnpm add @nestjs/throttler
+```
+
+```typescript app.module.ts
+import { ThrottlerModule } from '@nestjs/throttler';
+
+@Module({
+  imports: [
+    ThrottlerModule.forRoot({
+      ttl: 60,      // Time window in seconds
+      limit: 100    // Max requests per window
+    })
+  ]
+})
+export class AppModule {}
+```
+
+Apply to endpoints:
+
+```typescript
+@UseGuards(ThrottlerGuard)
+@Post('login')
+login() {}
+```
+
+### Caching Headers
+
+Set appropriate cache headers:
+
+```typescript
+@Header('Cache-Control', 'public, max-age=300')
+@Get('categories')
+getCategories() {
+  // Cached for 5 minutes
+}
+```
+
+## Security Hardening
+
+### Helmet for Security Headers
+
+```bash
+pnpm add helmet
+```
+
+```typescript main.ts
+import helmet from 'helmet';
+
+app.use(helmet());
+```
+
+This adds:
+- `X-Frame-Options`
+- `X-Content-Type-Options`
+- `Strict-Transport-Security`
+- And more security headers
+
+### CORS Configuration
+
+```typescript apps/backend/src/main.ts
+const app = await NestFactory.create(AppModule, {
+  cors: {
+    origin: process.env.FRONTEND_URL,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+    allowedHeaders: 'Content-Type,Authorization'
+  }
+});
+```
+
+### SSL/TLS
+
+Always use HTTPS in production:
+
+- Most platforms (Railway, Vercel, etc.) provide free SSL certificates
+- For custom domains, use Let's Encrypt
+- Enforce HTTPS redirects
+
+## Deployment Checklist
+
+<Checklist>
+  <Check>Environment variables configured securely</Check>
+  <Check>Database migrations tested</Check>
+  <Check>Database backup strategy in place</Check>
+  <Check>SSL/HTTPS enabled</Check>
+  <Check>CORS properly configured</Check>
+  <Check>Rate limiting enabled</Check>
+  <Check>Error tracking configured (Sentry, etc.)</Check>
+  <Check>Health check endpoints working</Check>
+  <Check>Logging configured</Check>
+  <Check>Performance monitoring set up</Check>
+  <Check>Secrets rotated from development</Check>
+  <Check>Production build tested locally</Check>
+</Checklist>
+
+## Troubleshooting
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion title="Database Connection Errors" icon="database">
+    **Symptoms**: `Can't reach database server` or `Connection timeout`
+    
+    **Solutions**:
+    1. Verify `DATABASE_URL` is correct
+    2. Check database is accessible from your deployment platform
+    3. Ensure connection string includes `?pgbouncer=true` for Supabase
+    4. Check IP whitelist in database settings
+  </Accordion>
+  
+  <Accordion title="Migration Failures" icon="triangle-exclamation">
+    **Symptoms**: `Migration failed to apply`
+    
+    **Solutions**:
+    1. Use `DIRECT_URL` for migrations (port 5432, not 6543)
+    2. Check migration files for syntax errors
+    3. Verify database user has sufficient permissions
+    4. Review migration logs for specific error messages
+  </Accordion>
+  
+  <Accordion title="JWT Errors" icon="key">
+    **Symptoms**: `Invalid token` or `Token expired`
+    
+    **Solutions**:
+    1. Ensure `JWT_SECRET` is set and consistent
+    2. Verify `JWT_EXPIRES_IN` is valid format (e.g., '7d')
+    3. Check system time is synchronized
+    4. Clear old tokens and re-authenticate
+  </Accordion>
+  
+  <Accordion title="CORS Errors" icon="shield">
+    **Symptoms**: Browser shows CORS policy errors
+    
+    **Solutions**:
+    1. Set `FRONTEND_URL` to your actual frontend domain
+    2. Ensure `credentials: true` is set if using cookies
+    3. Check `allowedHeaders` includes required headers
+    4. Verify OPTIONS requests are handled
+  </Accordion>
+</AccordionGroup>
+
+## Monitoring Production
+
+### Key Metrics to Track
+
+<CardGroup cols={2}>
+  <Card title="Response Time" icon="gauge">
+    Monitor API endpoint response times. Target: < 200ms for most endpoints.
+  </Card>
+  
+  <Card title="Error Rate" icon="triangle-exclamation">
+    Track 4xx and 5xx errors. Target: < 1% error rate.
+  </Card>
+  
+  <Card title="Database Performance" icon="database">
+    Monitor query times and connection pool usage.
+  </Card>
+  
+  <Card title="Resource Usage" icon="server">
+    Track CPU, memory, and disk usage. Scale when consistently > 70%.
+  </Card>
+</CardGroup>
+
+### Logging Best Practices
+
+```typescript
+// ✅ Good - Structured logging
+this.logger.logOperation('Create transaction', {
+  userId,
+  amount: dto.amount,
+  type: dto.type,
+  timestamp: new Date().toISOString()
+});
+
+// ❌ Bad - Unstructured logging
+console.log('Creating transaction for user with amount ' + dto.amount);
+```
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Advanced Concepts" icon="brain" href="/advanced/concepts">
+    Technical patterns and architecture
+  </Card>
+  <Card title="Best Practices" icon="sparkles" href="/advanced/best-practices">
+    Code quality and testing strategies
+  </Card>
+  <Card title="Supabase Docs" icon="database" href="https://supabase.com/docs">
+    Database setup and configuration
+  </Card>
+  <Card title="Railway Docs" icon="train" href="https://docs.railway.app">
+    Deployment platform documentation
+  </Card>
+</CardGroup>

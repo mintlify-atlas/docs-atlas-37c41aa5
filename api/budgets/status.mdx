@@ -1,0 +1,204 @@
+---
+title: "Get Budget Status"
+api: "GET /api/budgets/:id/status"
+description: "Get detailed status for a specific budget including spending and remaining amounts"
+---
+
+<Note>
+This endpoint is derived from the list endpoint behavior. For individual budget status, use the list endpoint and filter the results client-side, or implement a dedicated status endpoint in your backend.
+</Note>
+
+## Alternative: Use List Endpoint
+
+The `/api/budgets` list endpoint already provides comprehensive status information for all budgets, including:
+
+- Current spending (direct and recursive)
+- Remaining budget
+- Status indicators (OK, WARNING, EXCEEDED, UNBUDGETED)
+- Percentage used
+
+To get status for a specific budget:
+
+1. Call `GET /api/budgets?month=X&year=Y`
+2. Find the budget by `id` in the response
+3. Extract the status fields
+
+## Status Indicators
+
+<ResponseField name="status" type="string">
+  Budget health indicator:
+  
+  - **OK**: Less than 80% of budget spent - spending is under control
+  - **WARNING**: 80-99% of budget spent - approaching the limit
+  - **EXCEEDED**: 100% or more spent - budget limit has been exceeded
+  - **UNBUDGETED**: No budget set for this category
+</ResponseField>
+
+## Status Calculation Logic
+
+```javascript
+if (limit === 0) {
+  status = 'UNBUDGETED';
+} else {
+  percentage = Math.round((spent / limit) * 100);
+  
+  if (percentage >= 100) {
+    status = 'EXCEEDED';
+  } else if (percentage >= 80) {
+    status = 'WARNING';
+  } else {
+    status = 'OK';
+  }
+}
+```
+
+## Example: Getting Budget Status
+
+<RequestExample>
+```javascript JavaScript
+// Get all budgets for current month
+const response = await fetch(
+  'https://api.yourfinanceapp.com/api/budgets',
+  {
+    headers: {
+      'Authorization': 'Bearer YOUR_TOKEN'
+    }
+  }
+);
+
+const budgets = await response.json();
+
+// Find specific budget by ID
+const budgetId = '550e8400-e29b-41d4-a716-446655440000';
+const budget = findBudgetById(budgets, budgetId);
+
+function findBudgetById(budgets, id) {
+  for (const budget of budgets) {
+    if (budget.id === id) return budget;
+    
+    // Recursively search children
+    const found = findBudgetById(budget.children, id);
+    if (found) return found;
+  }
+  return null;
+}
+
+// Access status fields
+console.log({
+  spent: budget.spent,
+  remaining: budget.remaining,
+  status: budget.status,
+  percentage: budget.percentage
+});
+```
+
+```python Python
+import requests
+
+def find_budget_by_id(budgets, budget_id):
+    for budget in budgets:
+        if budget.get('id') == budget_id:
+            return budget
+        
+        # Recursively search children
+        found = find_budget_by_id(budget.get('children', []), budget_id)
+        if found:
+            return found
+    
+    return None
+
+# Get all budgets
+response = requests.get(
+    'https://api.yourfinanceapp.com/api/budgets',
+    headers={'Authorization': 'Bearer YOUR_TOKEN'}
+)
+
+budgets = response.json()
+
+# Find specific budget
+budget_id = '550e8400-e29b-41d4-a716-446655440000'
+budget = find_budget_by_id(budgets, budget_id)
+
+if budget:
+    print(f"Spent: {budget['spent']}")
+    print(f"Remaining: {budget['remaining']}")
+    print(f"Status: {budget['status']}")
+    print(f"Percentage: {budget['percentage']}%")
+```
+</RequestExample>
+
+## Status Response Fields
+
+When you extract a budget from the list endpoint, you get:
+
+<ResponseField name="spent" type="number">
+  Total amount spent (includes child categories)
+</ResponseField>
+
+<ResponseField name="directSpent" type="number">
+  Amount spent directly in this category only
+</ResponseField>
+
+<ResponseField name="remaining" type="number">
+  Remaining budget (amount - spent, minimum 0)
+</ResponseField>
+
+<ResponseField name="percentage" type="number">
+  Percentage of budget used (0-100+)
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  One of: OK, WARNING, EXCEEDED, UNBUDGETED
+</ResponseField>
+
+<ResponseExample>
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "categoryId": "660e8400-e29b-41d4-a716-446655440001",
+  "categoryName": "Food & Dining",
+  "categoryColor": "#FF6B6B",
+  "categoryIcon": "Utensils",
+  "amount": 50000,
+  "spent": 42000,
+  "directSpent": 30000,
+  "remaining": 8000,
+  "percentage": 84,
+  "status": "WARNING",
+  "children": []
+}
+```
+</ResponseExample>
+
+## Implementation Recommendation
+
+If you need a dedicated status endpoint, implement it in your backend:
+
+```typescript
+@Get(':id/status')
+async getStatus(
+  @Param('id') id: string,
+  @CurrentUser('id') userId: string,
+) {
+  const budget = await this.budgetsService.findOneAndValidateOwner(id, userId);
+  
+  // Get current month spending
+  const spent = await this.calculateSpending(budget);
+  const remaining = Math.max(0, budget.amount - spent);
+  const percentage = Math.round((spent / budget.amount) * 100);
+  
+  let status: string;
+  if (percentage >= 100) status = 'EXCEEDED';
+  else if (percentage >= 80) status = 'WARNING';
+  else status = 'OK';
+  
+  return {
+    budgetId: budget.id,
+    amount: budget.amount,
+    spent,
+    remaining,
+    percentage,
+    status
+  };
+}
+```

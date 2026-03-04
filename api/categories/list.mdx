@@ -1,0 +1,177 @@
+---
+title: 'List Categories'
+api: 'GET /api/categories'
+description: 'Retrieve all categories for the authenticated user with optional filtering and pagination'
+---
+
+## Endpoint
+
+```
+GET /api/categories
+```
+
+Returns a paginated list of categories owned by the authenticated user. Categories are returned in a flat structure with `parentId` indicating hierarchical relationships.
+
+## Authentication
+
+Requires JWT authentication via `Authorization: Bearer <token>` header.
+
+## Query Parameters
+
+<ParamField query="type" type="enum">
+  Filter by category type. One of:
+  - `INCOME` - Only income categories
+  - `EXPENSE` - Only expense categories
+  - `BOTH` - Only categories marked as both
+  - `both` (lowercase) - Returns all categories regardless of type
+</ParamField>
+
+<ParamField query="page" type="number" default="1">
+  Page number for pagination (1-indexed)
+</ParamField>
+
+<ParamField query="limit" type="number" default="20">
+  Number of items per page
+</ParamField>
+
+## Response
+
+Returns a paginated result object:
+
+<ResponseField name="data" type="array">
+  Array of category objects
+  
+  <ResponseField name="id" type="string">
+    Unique identifier (UUID)
+  </ResponseField>
+  
+  <ResponseField name="userId" type="string">
+    Owner user ID
+  </ResponseField>
+  
+  <ResponseField name="name" type="string">
+    Category name
+  </ResponseField>
+  
+  <ResponseField name="type" type="string">
+    Category type (`INCOME`, `EXPENSE`, or `BOTH`)
+  </ResponseField>
+  
+  <ResponseField name="isFixed" type="boolean">
+    Whether this is a fixed monthly expense
+  </ResponseField>
+  
+  <ResponseField name="color" type="string" nullable>
+    Hex color code
+  </ResponseField>
+  
+  <ResponseField name="icon" type="string" nullable>
+    Icon identifier
+  </ResponseField>
+  
+  <ResponseField name="parentId" type="string" nullable>
+    ID of parent category (null for root categories)
+  </ResponseField>
+  
+  <ResponseField name="createdAt" type="string">
+    ISO 8601 creation timestamp
+  </ResponseField>
+  
+  <ResponseField name="updatedAt" type="string">
+    ISO 8601 last update timestamp
+  </ResponseField>
+  
+  <ResponseField name="deletedAt" type="string" nullable>
+    ISO 8601 deletion timestamp (always null for active categories)
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="meta" type="object">
+  Pagination metadata
+  
+  <ResponseField name="total" type="number">
+    Total number of items matching the query
+  </ResponseField>
+  
+  <ResponseField name="page" type="number">
+    Current page number
+  </ResponseField>
+  
+  <ResponseField name="limit" type="number">
+    Items per page
+  </ResponseField>
+  
+  <ResponseField name="totalPages" type="number">
+    Total number of pages available
+  </ResponseField>
+</ResponseField>
+
+## Hierarchical Structure
+
+Categories are returned in a flat array. Use the `parentId` field to reconstruct the hierarchy on the client:
+- Root categories have `parentId: null`
+- Subcategories have `parentId` set to their parent's UUID
+
+## Example Request
+
+```bash
+GET /api/categories?type=EXPENSE&page=1&limit=10
+```
+
+## Example Response
+
+```json
+{
+  "data": [
+    {
+      "id": "cat-parent-uuid",
+      "userId": "user-uuid",
+      "name": "Entertainment",
+      "type": "EXPENSE",
+      "isFixed": false,
+      "color": "#E74C3C",
+      "icon": "film",
+      "parentId": null,
+      "createdAt": "2026-01-15T08:00:00.000Z",
+      "updatedAt": "2026-01-15T08:00:00.000Z",
+      "deletedAt": null
+    },
+    {
+      "id": "cat-child-uuid",
+      "userId": "user-uuid",
+      "name": "Streaming Services",
+      "type": "EXPENSE",
+      "isFixed": true,
+      "color": "#9B59B6",
+      "icon": "tv",
+      "parentId": "cat-parent-uuid",
+      "createdAt": "2026-01-15T08:05:00.000Z",
+      "updatedAt": "2026-01-15T08:05:00.000Z",
+      "deletedAt": null
+    }
+  ],
+  "meta": {
+    "total": 2,
+    "page": 1,
+    "limit": 10,
+    "totalPages": 1
+  }
+}
+```
+
+## Filtering Examples
+
+### Get all expense categories
+```bash
+GET /api/categories?type=EXPENSE
+```
+
+### Get all categories (regardless of type)
+```bash
+GET /api/categories?type=both
+```
+
+### Get income categories with pagination
+```bash
+GET /api/categories?type=INCOME&page=2&limit=20
+```

@@ -1,0 +1,95 @@
+---
+title: 'Export to Excel'
+api: 'GET /api/reports/export'
+---
+
+Exports transaction data to an Excel (.xlsx) file with formatted columns and styling.
+
+## Authentication
+
+Requires Bearer token authentication via `Authorization` header.
+
+## Query Parameters
+
+<ParamField query="accountId" type="string" optional>
+  Filter transactions by a specific account. If omitted, exports all transactions.
+</ParamField>
+
+## Response
+
+Returns a binary Excel file stream with the following characteristics:
+
+- **Content-Type**: `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+- **File Name**: `movimientos.xlsx`
+- **Max Records**: 2,000 transactions (most recent first)
+
+## Excel Format Details
+
+### Worksheet Structure
+
+<ResponseField name="Sheet Name" type="string">
+  `Movimientos` (Spanish for "Transactions")
+</ResponseField>
+
+### Columns
+
+| Column | Header | Width | Description |
+|--------|--------|-------|-------------|
+| A | Fecha | 15 | Transaction date |
+| B | Tipo | 12 | Type (INCOME/EXPENSE) |
+| C | Categoría | 20 | Category name or "-" if none |
+| D | Cuenta | 20 | Account name or "-" if none |
+| E | Descripción | 30 | Transaction description |
+| F | Monto | 15 | Amount (numeric) |
+| G | Moneda | 10 | Currency code |
+
+### Styling
+
+- **Header Row**: Bold white text on dark slate background (`#1E293B`)
+- **Data Rows**: Standard formatting with numeric amounts
+
+## Example Request
+
+```bash
+curl -X GET "https://api.yourfinanceapp.com/api/reports/export?accountId=account_123" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -o transactions.xlsx
+```
+
+## Example Request (All Accounts)
+
+```bash
+curl -X GET "https://api.yourfinanceapp.com/api/reports/export" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -o all_transactions.xlsx
+```
+
+## Use Cases
+
+- **Data Backup**: Download complete transaction history for archival purposes
+- **External Analysis**: Import into accounting software or spreadsheet tools
+- **Tax Preparation**: Export annual transactions for tax filing
+- **Budget Planning**: Analyze spending patterns in Excel pivot tables
+- **Reconciliation**: Compare exported data with bank statements
+
+## Implementation Details
+
+The export service uses **ExcelJS** library to generate high-quality spreadsheets with:
+
+- Proper column widths for readability
+- Professional header styling
+- Numeric formatting for amounts
+- Optimized memory usage for large datasets
+
+## Performance
+
+- **Query Limit**: 2,000 most recent transactions
+- **Ordering**: Descending by date (newest first)
+- **Filters Applied**: Excludes soft-deleted transactions (`deletedAt IS NULL`)
+
+## Notes
+
+- Amounts are stored as numbers (not strings) for Excel calculations
+- Categories and accounts default to "-" when not assigned
+- Currency field shows the transaction currency or account's default currency
+- File downloads immediately without requiring additional API calls

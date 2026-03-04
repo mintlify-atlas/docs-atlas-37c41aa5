@@ -1,0 +1,419 @@
+---
+title: 'Budgets'
+description: 'Control your spending with category-based monthly budgets and real-time tracking'
+icon: 'chart-pie'
+---
+
+## Overview
+
+Budgets help you control spending by setting monthly limits for each expense category. Your Finance App provides hierarchical budget tracking with automatic rollup calculations and visual status indicators.
+
+<CardGroup cols={2}>
+  <Card title="Category-Based" icon="tags">
+    Set budgets for any expense category in your system
+  </Card>
+  <Card title="Hierarchical Tracking" icon="sitemap">
+    Parent categories automatically sum their children's spending
+  </Card>
+  <Card title="Visual Status" icon="traffic-light">
+    OK, WARNING, or EXCEEDED status based on spending percentage
+  </Card>
+  <Card title="Parent-Child Validation" icon="shield-check">
+    Built-in rules prevent budget conflicts in category hierarchies
+  </Card>
+</CardGroup>
+
+## Creating a Budget
+
+Set a monthly spending limit for a category with POST `/budgets`:
+
+```json
+{
+  "amount": 50000.00,
+  "month": 3,
+  "year": 2026,
+  "categoryId": "food-category-uuid"
+}
+```
+
+### Request Parameters
+
+<ParamField path="amount" type="number" required>
+  Budget limit (must be positive)
+</ParamField>
+
+<ParamField path="month" type="number" required>
+  Month (1-12)
+</ParamField>
+
+<ParamField path="year" type="number" required>
+  Year (minimum: 2024)
+</ParamField>
+
+<ParamField path="categoryId" type="string" required>
+  UUID of the category to budget
+</ParamField>
+
+### Response
+
+```json
+{
+  "id": "budget-uuid",
+  "amount": 50000.00,
+  "month": 3,
+  "year": 2026,
+  "categoryId": "food-category-uuid",
+  "userId": "user-uuid",
+  "createdAt": "2026-03-01T10:00:00.000Z",
+  "updatedAt": "2026-03-01T10:00:00.000Z"
+}
+```
+
+<Note>
+  You can only create one budget per category per month. Attempting to create a duplicate returns a conflict error.
+</Note>
+
+## Hierarchical Budget Rules
+
+When working with category hierarchies, the system enforces two critical rules:
+
+### Rule 1: Child Cap (Upward Validation)
+
+Children cannot exceed their parent's budget:
+
+```json
+// Parent: Food = $50,000
+// ✅ Valid: Child budgets total $45,000
+{
+  "Restaurants": 20000,
+  "Groceries": 15000,
+  "Delivery": 10000
+  // Total: $45,000 < $50,000 ✅
+}
+
+// ❌ Invalid: Child budgets total $55,000
+{
+  "Restaurants": 25000,
+  "Groceries": 20000,
+  "Delivery": 10000
+  // Total: $55,000 > $50,000 ❌
+}
+```
+
+Error response:
+```json
+{
+  "statusCode": 400,
+  "message": "El presupuesto supera el límite de la categoría padre. Disponible: $5000."
+}
+```
+
+### Rule 2: Parent Floor (Downward Validation)
+
+Parents must cover all their children:
+
+```json
+// Children total: $45,000
+// ✅ Valid: Parent budget is $50,000
+PATCH /budgets/:parent-budget-id
+{
+  "amount": 50000  // $50,000 > $45,000 ✅
+}
+
+// ❌ Invalid: Parent budget is $40,000
+PATCH /budgets/:parent-budget-id
+{
+  "amount": 40000  // $40,000 < $45,000 ❌
+}
+```
+
+Error response:
+```json
+{
+  "statusCode": 400,
+  "message": "El monto es menor a la suma de las subcategorías ($45000). Ajusta las subcategorías primero."
+}
+```
+
+<Warning>
+  When creating hierarchical budgets, always start with parent categories, then add children. This avoids validation conflicts.
+</Warning>
+
+## Viewing Budget Status
+
+Get a comprehensive budget report for a specific month with GET `/budgets`:
+
+```bash
+GET /budgets?month=3&year=2026
+```
+
+If you omit month/year, it defaults to the current month.
+
+### Response Format
+
+The response shows a hierarchical tree with calculated spending:
+
+```json
+[
+  {
+    "id": "budget-uuid",
+    "categoryId": "food-uuid",
+    "categoryName": "Food",
+    "categoryColor": "#10B981",
+    "categoryIcon": "utensils",
+    "amount": 50000,
+    "spent": 42500,
+    "directSpent": 2500,
+    "remaining": 7500,
+    "percentage": 85,
+    "status": "WARNING",
+    "children": [
+      {
+        "id": "child-budget-uuid",
+        "categoryId": "restaurants-uuid",
+        "categoryName": "Restaurants",
+        "categoryColor": "#10B981",
+        "categoryIcon": "fork-knife",
+        "amount": 20000,
+        "spent": 22000,
+        "directSpent": 22000,
+        "remaining": 0,
+        "percentage": 110,
+        "status": "EXCEEDED",
+        "children": []
+      },
+      {
+        "categoryId": "groceries-uuid",
+        "categoryName": "Groceries",
+        "amount": 15000,
+        "spent": 12000,
+        "directSpent": 12000,
+        "remaining": 3000,
+        "percentage": 80,
+        "status": "WARNING",
+        "children": []
+      }
+    ]
+  }
+]
+```
+
+### Response Fields
+
+<AccordionGroup>
+  <Accordion title="id">
+    Budget ID (null if category has no budget but appears due to spending)
+  </Accordion>
+  
+  <Accordion title="spent (Recursive)">
+    Total spent in this category AND all its children. Used for parent categories.
+  </Accordion>
+  
+  <Accordion title="directSpent">
+    Amount spent directly in this category (excludes children). Used for leaf categories.
+  </Accordion>
+  
+  <Accordion title="remaining">
+    Budget amount minus recursive spending (max of 0)
+  </Accordion>
+  
+  <Accordion title="percentage">
+    (spent / amount) × 100, rounded to nearest integer
+  </Accordion>
+  
+  <Accordion title="status">
+    - **OK**: 0-79% spent (green)
+    - **WARNING**: 80-99% spent (yellow)
+    - **EXCEEDED**: 100%+ spent (red)
+    - **UNBUDGETED**: No budget set but has spending
+  </Accordion>
+</AccordionGroup>
+
+## Budget Status Indicators
+
+The system calculates status based on spending percentage:
+
+<CardGroup cols={3}>
+  <Card title="OK" icon="circle-check" color="#10B981">
+    0-79% of budget spent
+    
+    You're on track!
+  </Card>
+  <Card title="WARNING" icon="triangle-exclamation" color="#F59E0B">
+    80-99% of budget spent
+    
+    Getting close to your limit
+  </Card>
+  <Card title="EXCEEDED" icon="circle-xmark" color="#EF4444">
+    100%+ of budget spent
+    
+    You've exceeded your budget
+  </Card>
+</CardGroup>
+
+<Note>
+  **UNBUDGETED Status**: Categories with spending but no budget are marked as UNBUDGETED, helping you identify where to add budgets.
+</Note>
+
+## Updating Budgets
+
+Modify an existing budget with PATCH `/budgets/:id`:
+
+```json
+{
+  "amount": 55000
+}
+```
+
+### Update Validations
+
+When updating, the system re-validates:
+1. **Upward**: New amount + siblings must not exceed parent budget
+2. **Downward**: New amount must be ≥ sum of children budgets
+
+<Warning>
+  If you need to reduce a parent budget below its children's total, you must first reduce the children's budgets.
+</Warning>
+
+## Deleting Budgets
+
+Remove a budget with DELETE `/budgets/:id`:
+
+```bash
+DELETE /budgets/:id
+```
+
+Deleting a parent budget:
+- Removes the budget limit
+- Does NOT delete children's budgets
+- Children become "orphaned" but remain functional
+
+This is usually acceptable as children can exist without parent budgets.
+
+## Timezone Handling
+
+Budget periods respect your user timezone setting:
+
+```javascript
+// User timezone: America/Argentina/Buenos_Aires
+// Budget month: March 2026
+
+// Start: 2026-03-01 00:00:00 (Argentina time)
+// End: 2026-04-01 00:00:00 (Argentina time)
+
+// Spending is calculated only for transactions within this window
+```
+
+<Note>
+  The system uses your user profile's timezone. Update it via the user settings endpoint if you travel or relocate.
+</Note>
+
+## Recursive Spending Calculation
+
+Parent categories show the sum of:
+- Direct spending in the parent category
+- All spending in child categories
+- All spending in grandchild categories (if any)
+
+```
+Food ($50,000 budget)
+├─ Direct spending: $2,500
+├─ Restaurants: $22,000
+├─ Groceries: $12,000
+└─ Delivery: $6,000
+
+Total Spent: $2,500 + $22,000 + $12,000 + $6,000 = $42,500
+Percentage: ($42,500 / $50,000) × 100 = 85%
+Status: WARNING
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Start with Top-Level Categories">
+    Create budgets for main categories (Food, Transport, Housing) before subcategories. This prevents validation errors.
+  </Accordion>
+  
+  <Accordion title="Use the 50/30/20 Rule">
+    - 50% for needs (housing, food, utilities)
+    - 30% for wants (entertainment, dining out)
+    - 20% for savings and debt
+  </Accordion>
+  
+  <Accordion title="Review Weekly">
+    Check your budget status weekly to catch overspending early and adjust behavior.
+  </Accordion>
+  
+  <Accordion title="Adjust Monthly">
+    Review and update budgets at the end of each month based on actual spending patterns.
+  </Accordion>
+  
+  <Accordion title="Leave Buffer Room">
+    Set budgets 10-15% lower than your absolute limit to account for unexpected expenses.
+  </Accordion>
+</AccordionGroup>
+
+## Common Workflows
+
+### Setting Up Your First Budget
+
+```bash
+# 1. Create budget for main category
+POST /budgets
+{
+  "categoryId": "food-uuid",
+  "amount": 50000,
+  "month": 3,
+  "year": 2026
+}
+
+# 2. Create budgets for subcategories
+POST /budgets
+{
+  "categoryId": "restaurants-uuid",
+  "amount": 20000,
+  "month": 3,
+  "year": 2026
+}
+
+POST /budgets
+{
+  "categoryId": "groceries-uuid",
+  "amount": 25000,
+  "month": 3,
+  "year": 2026
+}
+
+# 3. Check status throughout the month
+GET /budgets?month=3&year=2026
+```
+
+### Adjusting an Overspent Category
+
+```bash
+# You've spent $22,000 of a $20,000 budget on restaurants
+# Option 1: Increase the budget (if parent allows)
+PATCH /budgets/:restaurants-budget-id
+{
+  "amount": 25000
+}
+
+# Option 2: Reduce other subcategories to stay within parent limit
+PATCH /budgets/:groceries-budget-id
+{
+  "amount": 20000  # Reduce from 25k to 20k
+}
+```
+
+### Planning Next Month
+
+```bash
+# Copy this month's budgets with adjustments
+POST /budgets
+{
+  "categoryId": "food-uuid",
+  "amount": 52000,  # Increase by 4% based on this month
+  "month": 4,
+  "year": 2026
+}
+```

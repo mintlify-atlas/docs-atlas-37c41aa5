@@ -1,0 +1,107 @@
+---
+title: "Delete Budget"
+api: "DELETE /api/budgets/:id"
+description: "Delete a budget"
+---
+
+## Authentication
+
+This endpoint requires JWT authentication via Bearer token.
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  UUID of the budget to delete
+</ParamField>
+
+## Validation Rules
+
+### Ownership
+You can only delete budgets you own.
+
+**Error**: `403 Forbidden` - "No tienes permiso"
+
+### Not Found
+Budget must exist.
+
+**Error**: `404 Not Found` - "Presupuesto no encontrado"
+
+## Response
+
+Returns the deleted budget object.
+
+<ResponseField name="id" type="string">
+  UUID of the deleted budget
+</ResponseField>
+
+<ResponseField name="amount" type="number">
+  Budget limit amount
+</ResponseField>
+
+<ResponseField name="month" type="integer">
+  Month of the budget (1-12)
+</ResponseField>
+
+<ResponseField name="year" type="integer">
+  Year of the budget
+</ResponseField>
+
+<ResponseField name="categoryId" type="string">
+  UUID of the associated category
+</ResponseField>
+
+<ResponseField name="userId" type="string">
+  UUID of the user who owned this budget
+</ResponseField>
+
+<ResponseExample>
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "amount": 50000.0,
+  "month": 1,
+  "year": 2026,
+  "categoryId": "660e8400-e29b-41d4-a716-446655440001",
+  "userId": "770e8400-e29b-41d4-a716-446655440002"
+}
+```
+</ResponseExample>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE https://api.yourfinanceapp.com/api/budgets/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://api.yourfinanceapp.com/api/budgets/550e8400-e29b-41d4-a716-446655440000',
+  {
+    method: 'DELETE',
+    headers: {
+      'Authorization': 'Bearer YOUR_TOKEN'
+    }
+  }
+);
+
+const deletedBudget = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.delete(
+    'https://api.yourfinanceapp.com/api/budgets/550e8400-e29b-41d4-a716-446655440000',
+    headers={'Authorization': 'Bearer YOUR_TOKEN'}
+)
+
+deleted_budget = response.json()
+```
+</RequestExample>
+
+## Important Notes
+
+- Deleting a parent category budget does not delete child budgets
+- Child categories become "orphaned" from the parent limit but remain valid
+- This operation is permanent and cannot be undone
+- Consider updating to amount 0 instead if you want to preserve historical data

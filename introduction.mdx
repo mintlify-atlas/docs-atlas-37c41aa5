@@ -1,0 +1,202 @@
+---
+title: "Introduction"
+description: "Learn about Your Finance App - a modern personal finance application built with NestJS, Prisma, and PostgreSQL"
+---
+
+# Introduction to Your Finance App
+
+Your Finance App is a professional personal finance management application built with modern web technologies. This project serves as both a functional finance tracker and an educational resource for learning full-stack development with TypeScript.
+
+## What is Your Finance App?
+
+Your Finance App is a backend API application that allows users to:
+
+- **Track Income and Expenses** - Record all financial transactions with detailed information
+- **Categorize Transactions** - Organize your finances with flexible categorization
+- **Multi-Currency Support** - Handle transactions in ARS, USD, and EUR
+- **Automatic Balance Calculation** - View your financial status in real-time
+- **Advanced Filtering** - Filter transactions by date, type, category, and more
+- **Secure Authentication** - JWT-based authentication system
+- **Data History** - Soft delete pattern maintains complete transaction history
+
+<Note>
+This is an educational project designed to teach professional backend development patterns and best practices.
+</Note>
+
+## Who is This For?
+
+### Ideal for You If:
+
+- You're learning web development and want to see real-world patterns
+- You know JavaScript/TypeScript basics and want to level up
+- You want to understand how modern backend applications are structured
+- You're looking for well-documented, production-ready code examples
+- You're interested in learning NestJS, Prisma, or PostgreSQL
+
+### No Prior Experience Needed With:
+
+- **NestJS** - You'll learn it through this project
+- **Prisma** - Everything is explained step by step
+- **PostgreSQL** - We start from the basics
+- **Design Patterns** - They're demonstrated in the codebase
+
+## Key Features
+
+### Financial Management
+
+- Complete CRUD operations for transactions
+- Real-time balance calculation across multiple currencies
+- Soft delete for maintaining audit trails
+- Date-based filtering and reporting
+- Category-based transaction organization
+
+### Authentication & Security
+
+- JWT-based authentication
+- Password hashing with bcrypt
+- Protected routes with guards
+- User-specific data isolation
+- Input validation with DTOs
+
+### Developer Experience
+
+- Type-safe database queries with Prisma
+- Automatic API documentation with Swagger
+- Hot reload in development mode
+- ESLint and Prettier for code quality
+- Modular architecture for scalability
+
+## Technology Stack
+
+### Backend Framework
+
+- **[NestJS](https://nestjs.com/)** - Progressive Node.js framework with TypeScript
+- **[TypeScript](https://www.typescriptlang.org/)** - Type safety throughout the application
+- **[Node.js](https://nodejs.org/)** - JavaScript runtime (v18+)
+
+### Database & ORM
+
+- **[PostgreSQL](https://www.postgresql.org/)** - Robust relational database
+- **[Prisma](https://www.prisma.io/)** - Modern ORM with excellent TypeScript support
+- **[Supabase](https://supabase.com/)** - Hosted PostgreSQL with free tier
+
+### Authentication
+
+- **[Passport JWT](https://www.passportjs.org/)** - JWT authentication strategy
+- **[bcrypt](https://github.com/kelektiv/node.bcrypt.js)** - Password hashing
+- **[class-validator](https://github.com/typestack/class-validator)** - DTO validation
+
+### Development Tools
+
+- **[pnpm](https://pnpm.io/)** - Fast, disk space efficient package manager
+- **[ESLint](https://eslint.org/)** - Code linting
+- **[Prettier](https://prettier.io/)** - Code formatting
+
+## What You'll Learn
+
+<Steps>
+  <Step title="Backend Architecture">
+    Learn modular architecture with NestJS, dependency injection, guards, decorators, and exception handling.
+  </Step>
+  
+  <Step title="Database Design">
+    Master relational schema design, Prisma migrations, model relationships, indexes for performance, and the soft delete pattern.
+  </Step>
+  
+  <Step title="Security Best Practices">
+    Implement JWT authentication, password hashing, route protection, user authorization, and input validation.
+  </Step>
+  
+  <Step title="TypeScript Patterns">
+    Use advanced TypeScript with strict types, interfaces and DTOs, generics, decorators, and end-to-end type safety.
+  </Step>
+</Steps>
+
+## Project Structure
+
+The application follows a monorepo structure:
+
+```
+your-finance-app/
+├── apps/
+│   └── backend/              # NestJS application
+│       ├── prisma/           # Database schema and migrations
+│       ├── src/
+│       │   ├── auth/         # Authentication module
+│       │   ├── transactions/ # Transactions module
+│       │   └── prisma/       # Prisma service module
+│       └── test/             # Test files
+├── docs/                     # Complete documentation
+├── pnpm-workspace.yaml       # Monorepo configuration
+└── package.json              # Root scripts
+```
+
+## API Capabilities
+
+### Authentication Endpoints
+
+```http
+POST   /auth/register      # Create new user account
+POST   /auth/login         # Authenticate and get JWT token
+GET    /auth/profile       # Get current user profile (protected)
+```
+
+### Transaction Endpoints
+
+```http
+POST   /transactions           # Create new transaction
+GET    /transactions           # List transactions with filters
+GET    /transactions/balance   # Get current balance
+GET    /transactions/:id       # Get transaction details
+PATCH  /transactions/:id       # Update transaction
+DELETE /transactions/:id       # Soft delete transaction
+```
+
+## Educational Goals
+
+This project was specifically designed to teach:
+
+<CardGroup cols={2}>
+  <Card title="Clean Architecture" icon="layer-group">
+    Modular design with clear separation of concerns
+  </Card>
+  
+  <Card title="Type Safety" icon="shield-check">
+    End-to-end TypeScript for reliable code
+  </Card>
+  
+  <Card title="Best Practices" icon="star">
+    Industry-standard patterns and conventions
+  </Card>
+  
+  <Card title="Real-World Patterns" icon="code">
+    Production-ready code organization
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+Ready to get started? Follow our quickstart guide to get the application running on your local machine.
+
+<Card title="Quickstart Guide" icon="rocket" href="/quickstart">
+  Get Your Finance App running in under 10 minutes
+</Card>
+
+## Getting Help
+
+If you encounter any issues or have questions:
+
+- Check the detailed documentation in the `/docs` folder
+- Review the source code comments and examples
+- Open an issue on GitHub
+- Experiment with the code - that's the best way to learn!
+
+<Warning>
+This is an educational project. For production use, you should add comprehensive testing, monitoring, rate limiting, and additional security measures.
+</Warning>
+
+---
+
+<p align="center">
+  <strong>Let's start building! 🚀</strong>
+</p>

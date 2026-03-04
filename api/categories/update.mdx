@@ -1,0 +1,207 @@
+---
+title: 'Update Category'
+api: 'PATCH /api/categories/:id'
+description: 'Update an existing category with partial data'
+---
+
+## Endpoint
+
+```
+PATCH /api/categories/:id
+```
+
+Updates one or more fields of an existing category. All fields are optional - only provided fields will be updated.
+
+## Authentication
+
+Requires JWT authentication via `Authorization: Bearer <token>` header.
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  UUID of the category to update. Must belong to the authenticated user.
+</ParamField>
+
+## Request Body
+
+All fields are optional. Only include fields you want to update.
+
+<ParamField body="name" type="string">
+  New category name (2-50 characters). Must be unique per user, type, and parent.
+</ParamField>
+
+<ParamField body="type" type="enum">
+  New category type. One of:
+  - `INCOME`
+  - `EXPENSE`
+  - `BOTH`
+</ParamField>
+
+<ParamField body="isFixed" type="boolean">
+  Update fixed expense status
+</ParamField>
+
+<ParamField body="color" type="string">
+  New hex color code (e.g., `#FF5733`). Must match pattern `^#[0-9A-Fa-f]{6}$`
+</ParamField>
+
+<ParamField body="icon" type="string">
+  New icon identifier (max 50 characters)
+</ParamField>
+
+<ParamField body="parentId" type="string">
+  Change parent category. Set to update hierarchical relationship. Parent must:
+  - Exist and belong to the authenticated user
+  - Not be the category itself
+  - Not be a subcategory (2-level nesting limit)
+</ParamField>
+
+## Validation Rules
+
+- **Name uniqueness**: If changing name, it must be unique for the user's other categories of the same type and parent
+- **Parent validation**:
+  - Parent must exist and belong to the user
+  - Category cannot be its own parent
+  - Parent cannot be a subcategory (prevents deep nesting)
+- **Ownership**: Category must belong to the authenticated user
+
+## Response
+
+Returns the updated category object:
+
+<ResponseField name="id" type="string">
+  Category UUID (unchanged)
+</ResponseField>
+
+<ResponseField name="userId" type="string">
+  Owner user ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Updated category name
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  Updated category type
+</ResponseField>
+
+<ResponseField name="isFixed" type="boolean">
+  Updated fixed expense status
+</ResponseField>
+
+<ResponseField name="color" type="string" nullable>
+  Updated hex color code
+</ResponseField>
+
+<ResponseField name="icon" type="string" nullable>
+  Updated icon identifier
+</ResponseField>
+
+<ResponseField name="parentId" type="string" nullable>
+  Updated parent ID
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  Original creation timestamp
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string">
+  New update timestamp (reflects the update)
+</ResponseField>
+
+<ResponseField name="deletedAt" type="string" nullable>
+  Deletion timestamp (null for active categories)
+</ResponseField>
+
+## Example Request
+
+```json
+{
+  "name": "Video Streaming",
+  "color": "#3498DB",
+  "isFixed": true
+}
+```
+
+## Example Response
+
+```json
+{
+  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "userId": "user-uuid-here",
+  "name": "Video Streaming",
+  "type": "EXPENSE",
+  "isFixed": true,
+  "color": "#3498DB",
+  "icon": "tv",
+  "parentId": "550e8400-e29b-41d4-a716-446655440000",
+  "createdAt": "2026-03-04T10:30:00.000Z",
+  "updatedAt": "2026-03-04T11:45:00.000Z",
+  "deletedAt": null
+}
+```
+
+## Error Responses
+
+### 404 Not Found
+```json
+{
+  "statusCode": 404,
+  "message": "Category not found"
+}
+```
+
+### 409 Conflict
+```json
+{
+  "statusCode": 409,
+  "message": "Category \"Video Streaming\" already exists"
+}
+```
+
+### 400 Bad Request (Invalid Parent)
+```json
+{
+  "statusCode": 400,
+  "message": "Invalid parent category"
+}
+```
+
+### 400 Bad Request (Self-Reference)
+```json
+{
+  "statusCode": 400,
+  "message": "Category cannot be its own parent"
+}
+```
+
+## Update Examples
+
+### Change only the name
+```json
+{
+  "name": "Subscriptions"
+}
+```
+
+### Update color and icon
+```json
+{
+  "color": "#FF5733",
+  "icon": "star"
+}
+```
+
+### Move to a different parent
+```json
+{
+  "parentId": "new-parent-uuid"
+}
+```
+
+### Make it a root category (remove parent)
+```json
+{
+  "parentId": null
+}
+```

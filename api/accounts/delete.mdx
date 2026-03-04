@@ -1,0 +1,144 @@
+---
+title: 'Delete Account'
+api: 'DELETE /api/accounts/:id'
+---
+
+Deletes an account for the authenticated user. Default accounts cannot be deleted.
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the account to delete
+</ParamField>
+
+## Validation Rules
+
+<Warning>
+**Cannot delete default accounts** - If the account has `isDefault: true`, the deletion will fail with a 400 Bad Request error.
+</Warning>
+
+- The account must exist and belong to the authenticated user
+- The account must not be marked as default
+- User must be authenticated with a valid JWT token
+
+## Cascade Behavior
+
+<Info>
+When an account is deleted, related transactions are handled according to the database schema:
+
+- **Transactions**: The `accountId` field has no explicit `onDelete` cascade in the schema, so transactions will remain but may need manual cleanup or have their `accountId` set to null depending on database constraints.
+- Consider transferring transactions to another account or archiving them before deletion to maintain data integrity.
+</Info>
+
+## Response
+
+Returns the deleted account object upon successful deletion.
+
+<ResponseField name="id" type="string">
+  Unique identifier of the deleted account
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Name of the deleted account
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  Account type that was deleted
+</ResponseField>
+
+<ResponseField name="balance" type="number">
+  Final balance of the account
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  Currency code
+</ResponseField>
+
+<ResponseField name="userId" type="string">
+  Owner user ID
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  Original creation timestamp
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string">
+  Last update timestamp
+</ResponseField>
+
+## Error Responses
+
+<ResponseField name="404" type="error">
+  **Account not found**
+  
+  The account doesn't exist or doesn't belong to the authenticated user.
+</ResponseField>
+
+<ResponseField name="400" type="error">
+  **Cannot delete default account**
+  
+  The account is marked as default and cannot be deleted. Change the default account first or remove the default flag.
+</ResponseField>
+
+<ResponseField name="401" type="error">
+  **Unauthorized**
+  
+  Missing or invalid authentication token.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE https://api.yourfinanceapp.com/api/accounts/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://api.yourfinanceapp.com/api/accounts/550e8400-e29b-41d4-a716-446655440000',
+  {
+    method: 'DELETE',
+    headers: {
+      'Authorization': 'Bearer YOUR_JWT_TOKEN'
+    }
+  }
+);
+
+const deletedAccount = await response.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Old Savings Account",
+  "type": "SAVINGS",
+  "currency": "USD",
+  "balance": 0,
+  "color": "#3B82F6",
+  "icon": "piggy-bank",
+  "targetAmount": null,
+  "targetDate": null,
+  "isDefault": false,
+  "userId": "123e4567-e89b-12d3-a456-426614174000",
+  "createdAt": "2025-01-15T10:30:00Z",
+  "updatedAt": "2025-12-20T14:22:00Z"
+}
+```
+
+```json Error - Default Account
+{
+  "statusCode": 400,
+  "message": "Cannot delete default account",
+  "error": "Bad Request"
+}
+```
+
+```json Error - Not Found
+{
+  "statusCode": 404,
+  "message": "Account not found",
+  "error": "Not Found"
+}
+```
+</ResponseExample>

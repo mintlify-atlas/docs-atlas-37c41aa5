@@ -1,0 +1,634 @@
+---
+title: 'Best Practices'
+description: 'Code organization, testing strategies, and quality standards for Your Finance App'
+icon: 'sparkles'
+---
+
+## Code Organization
+
+### Feature-based Structure
+
+Organize code by feature, not by file type:
+
+```
+✅ Good - By feature
+src/
+├── auth/
+│   ├── dto/
+│   ├── guards/
+│   ├── strategies/
+│   ├── auth.controller.ts
+│   ├── auth.service.ts
+│   └── auth.module.ts
+├── transactions/
+│   ├── dto/
+│   ├── transactions.controller.ts
+│   ├── transactions.service.ts
+│   └── transactions.module.ts
+
+❌ Bad - By file type
+src/
+├── controllers/
+│   ├── auth.controller.ts
+│   └── transactions.controller.ts
+├── services/
+│   ├── auth.service.ts
+│   └── transactions.service.ts
+```
+
+<Info>
+Feature-based organization makes it easier to locate related code and manage feature development.
+</Info>
+
+### Naming Conventions
+
+#### Files
+
+```typescript
+// Kebab-case with descriptive suffix
+auth.controller.ts
+auth.service.ts
+jwt-auth.guard.ts
+current-user.decorator.ts
+create-transaction.dto.ts
+```
+
+#### Classes
+
+```typescript
+// PascalCase with suffix
+export class AuthController {}
+export class AuthService {}
+export class JwtAuthGuard {}
+export class CreateTransactionDto {}
+```
+
+#### Variables and Functions
+
+```typescript
+// camelCase
+const userId = '123';
+const isValid = true;
+
+function calculateBalance() {}
+async function findTransaction() {}
+```
+
+#### Constants
+
+```typescript
+// UPPER_SNAKE_CASE
+const MAX_RETRIES = 3;
+const DEFAULT_CURRENCY = 'ARS';
+const JWT_EXPIRES_IN = '7d';
+```
+
+## Error Handling Patterns
+
+### Use Specific Exceptions
+
+```typescript
+// ✅ Good - Specific and clear
+if (!user) {
+  throw new NotFoundException('User not found');
+}
+
+if (user.id !== requestUserId) {
+  throw new ForbiddenException('Access denied to this resource');
+}
+
+if (existingEmail) {
+  throw new ConflictException('Email already registered');
+}
+
+// ❌ Bad - Generic and confusing
+throw new Error('Something went wrong');
+throw new HttpException('Error', 500);
+```
+
+### Business Logic Validation
+
+Validate business rules in services:
+
+```typescript apps/backend/src/transactions/transactions.service.ts
+async create(dto: CreateTransactionDto, userId: string) {
+  // Validate account ownership
+  const account = await this.prisma.account.findFirst({
+    where: { id: dto.accountId, userId }
+  });
+
+  if (!account) {
+    throw new NotFoundException(
+      'Account not found or does not belong to user'
+    );
+  }
+
+  // Validate sufficient funds for expenses
+  if (dto.type === 'EXPENSE') {
+    const currentBalance = Number(account.balance);
+    if (currentBalance < dto.amount) {
+      throw new BadRequestException(
+        `Insufficient funds. Balance: $${currentBalance}, Required: $${dto.amount}`
+      );
+    }
+  }
+
+  // Proceed with transaction creation
+}
+```
+
+### Centralized Error Logging
+
+```typescript apps/backend/src/transactions/transactions.service.ts
+private readonly logger = new AppLogger(TransactionsService.name);
+
+async create(dto: CreateTransactionDto, userId: string) {
+  try {
+    this.logger.logOperation('Create transaction', { type: dto.type, amount: dto.amount });
+    
+    const result = await this.prisma.transaction.create({ data });
+    
+    this.logger.logSuccess('Create transaction', { id: result.id });
+    return result;
+  } catch (error) {
+    this.logger.logFailure('Create transaction', error as Error);
+    throw error;
+  }
+}
+```
+
+## Security Best Practices
+
+### Never Expose Passwords
+
+```typescript
+// ❌ Bad - Password included
+return user;
+
+// ✅ Good - Explicitly exclude password
+return this.prisma.user.findUnique({
+  where: { id },
+  select: {
+    id: true,
+    email: true,
+    firstName: true,
+    lastName: true,
+    password: false  // Explicitly excluded
+  }
+});
+```
+
+### Validate All Input
+
+Use DTOs with class-validator:
+
+```typescript apps/backend/src/transactions/dto/create-transaction.dto.ts
+export class CreateTransactionDto {
+  @IsEnum(['INCOME', 'EXPENSE', 'TRANSFER'], {
+    message: 'Type must be INCOME, EXPENSE or TRANSFER'
+  })
+  type: string;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01, { message: 'Amount must be greater than 0' })
+  @Max(999999999.99)
+  amount: number;
+
+  @IsString()
+  @MaxLength(500)
+  @IsOptional()
+  description?: string;
+}
+```
+
+### Environment Variables
+
+```typescript
+// ❌ Bad - Hard-coded secrets
+const secret = 'my-secret-123';
+
+// ✅ Good - Use environment variables
+const secret = process.env.JWT_SECRET;
+
+// ✅ Better - Validate required variables
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
+```
+
+<Warning>
+Never commit `.env` files to version control. Use `.env.example` as a template.
+</Warning>
+
+### Generic Error Messages for Auth
+
+```typescript
+// ❌ Bad - Reveals information
+if (!user) throw new Error('User not found');
+if (!isValidPassword) throw new Error('Wrong password');
+
+// ✅ Good - Generic message
+if (!user || !isValidPassword) {
+  throw new UnauthorizedException('Invalid credentials');
+}
+```
+
+### CORS Configuration
+
+Configure CORS properly in production:
+
+```typescript apps/backend/src/main.ts
+const app = await NestFactory.create(AppModule, {
+  cors: {
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true
+  }
+});
+```
+
+## Testing Strategies
+
+### Unit Test Structure
+
+```typescript
+describe('TransactionsService', () => {
+  describe('create', () => {
+    it('should create a transaction successfully', async () => {
+      // Arrange
+      const dto = { 
+        type: 'EXPENSE', 
+        amount: 500,
+        accountId: 'account-id'
+      };
+
+      // Act
+      const result = await service.create(dto, 'user-123');
+
+      // Assert
+      expect(result.amount).toBe(500);
+      expect(result.type).toBe('EXPENSE');
+    });
+
+    it('should throw if amount is negative', async () => {
+      const dto = { type: 'EXPENSE', amount: -100 };
+
+      await expect(
+        service.create(dto, 'user-123')
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw if insufficient funds', async () => {
+      // Test overdraft protection
+      mockAccount.balance = 100;
+      const dto = { type: 'EXPENSE', amount: 500 };
+
+      await expect(
+        service.create(dto, 'user-123')
+      ).rejects.toThrow('Insufficient funds');
+    });
+  });
+});
+```
+
+### Mocking Prisma
+
+```typescript
+const mockPrisma = {
+  transaction: {
+    create: jest.fn(),
+    findMany: jest.fn(),
+    findUnique: jest.fn()
+  },
+  account: {
+    findFirst: jest.fn(),
+    update: jest.fn()
+  }
+};
+
+const module = await Test.createTestingModule({
+  providers: [
+    TransactionsService,
+    {
+      provide: PrismaService,
+      useValue: mockPrisma
+    }
+  ]
+}).compile();
+```
+
+### Test Coverage Goals
+
+<AccordionGroup>
+  <Accordion title="Critical Paths - 100% Coverage">
+    - Authentication and authorization
+    - Financial calculations (balance, transactions)
+    - Payment and transaction processing
+  </Accordion>
+  
+  <Accordion title="Business Logic - 80% Coverage">
+    - Service layer methods
+    - Data validation
+    - Error handling
+  </Accordion>
+  
+  <Accordion title="Controllers - 60% Coverage">
+    - Happy path tests
+    - Basic error scenarios
+  </Accordion>
+</AccordionGroup>
+
+## API Versioning
+
+### Global Prefix
+
+The app uses a global API prefix:
+
+```typescript apps/backend/src/main.ts
+app.setGlobalPrefix('api');
+// All routes become /api/transactions, /api/auth, etc.
+```
+
+### Future Versioning Strategy
+
+When you need to version your API:
+
+```typescript
+// Version 1
+@Controller({ path: 'transactions', version: '1' })
+export class TransactionsV1Controller {}
+
+// Version 2 with breaking changes
+@Controller({ path: 'transactions', version: '2' })
+export class TransactionsV2Controller {}
+
+// Enable versioning in main.ts
+app.enableVersioning({
+  type: VersioningType.URI
+});
+```
+
+<Tip>
+Version your API when making breaking changes to maintain backward compatibility for existing clients.
+</Tip>
+
+## Database Optimization
+
+### Indexes
+
+Ensure frequently queried fields are indexed:
+
+```prisma schema.prisma
+model Transaction {
+  userId     String
+  date       DateTime
+  categoryId String?
+  type       String
+  
+  @@index([userId])           // Foreign key
+  @@index([date])             // Used in ORDER BY and filtering
+  @@index([categoryId])       // Foreign key
+  @@index([type])             // Used in WHERE clauses
+}
+```
+
+### Pagination
+
+```typescript apps/backend/src/transactions/transactions.service.ts
+// Always paginate large datasets
+const skip = (page - 1) * limit;
+
+const [data, total] = await Promise.all([
+  this.prisma.transaction.findMany({
+    where,
+    skip,
+    take: limit,
+    orderBy: { date: 'desc' }
+  }),
+  this.prisma.transaction.count({ where })
+]);
+
+return createPaginatedResponse(data, total, page, limit);
+```
+
+### Select Only Required Fields
+
+```typescript
+// ❌ Bad - Fetches all fields
+const users = await prisma.user.findMany();
+
+// ✅ Good - Only needed fields
+const users = await prisma.user.findMany({
+  select: {
+    id: true,
+    email: true,
+    firstName: true,
+    lastName: true
+  }
+});
+```
+
+### Use Decimal for Currency
+
+```prisma schema.prisma
+model Transaction {
+  // ✅ Good - Precise decimal arithmetic
+  amount Decimal @db.Decimal(15, 2)
+  
+  // ❌ Bad - Floating point errors
+  // amount Float
+}
+```
+
+<Warning>
+Never use `Float` for currency. Use `Decimal` to avoid precision errors like `0.1 + 0.2 = 0.30000000000000004`.
+</Warning>
+
+## Code Quality Checklist
+
+Before committing code:
+
+<Checklist>
+  <Check>Code compiles without errors</Check>
+  <Check>All tests pass</Check>
+  <Check>No console.log statements left behind</Check>
+  <Check>No commented-out code</Check>
+  <Check>Environment variables documented in .env.example</Check>
+  <Check>.env file not committed</Check>
+  <Check>Proper error handling in place</Check>
+  <Check>Input validation with DTOs</Check>
+  <Check>API documentation updated (if needed)</Check>
+</Checklist>
+
+## Git Workflow
+
+### Conventional Commits
+
+```bash
+# Format
+<type>(<scope>): <subject>
+
+# Types
+feat:     New feature
+fix:      Bug fix
+docs:     Documentation changes
+refactor: Code refactoring
+test:     Adding tests
+chore:    Maintenance tasks
+perf:     Performance improvements
+
+# Examples
+feat(auth): implement JWT authentication
+fix(transactions): correct balance calculation for transfers
+docs(api): update endpoint documentation
+refactor(services): extract common validation logic
+test(transactions): add overdraft protection tests
+```
+
+### Branch Naming
+
+```bash
+main              # Production branch
+feature/name      # New features
+fix/name          # Bug fixes
+docs/name         # Documentation
+
+# Examples
+feature/multi-currency-support
+fix/balance-calculation-error
+docs/deployment-guide
+```
+
+### Atomic Commits
+
+```bash
+# ❌ Bad - Everything together
+git add .
+git commit -m "added features and fixed bugs"
+
+# ✅ Good - Separate commits
+git add src/auth/
+git commit -m "feat(auth): implement Google OAuth"
+
+git add src/transactions/
+git commit -m "fix(transactions): validate account ownership"
+```
+
+## Documentation Standards
+
+### JSDoc for Public APIs
+
+```typescript
+/**
+ * Calculates the user's total balance across all accounts
+ * @param userId - The unique identifier of the user
+ * @returns Balance grouped by currency
+ * @throws {NotFoundException} If user does not exist
+ */
+async getBalance(userId: string): Promise<BalanceResponse> {
+  // Implementation
+}
+```
+
+### Meaningful Comments
+
+```typescript
+// ❌ Bad - States the obvious
+// Create transaction
+const transaction = await prisma.transaction.create({ data });
+
+// ✅ Good - Explains the why
+// Use database transaction to ensure balance update and record creation
+// are atomic - if one fails, both are rolled back
+await prisma.$transaction(async (tx) => {
+  await tx.transaction.create({ data });
+  await tx.account.update({ where: { id }, data: { balance } });
+});
+```
+
+### API Documentation with Swagger
+
+```typescript
+export class CreateTransactionDto {
+  @ApiProperty({
+    description: 'Transaction type',
+    enum: ['INCOME', 'EXPENSE', 'TRANSFER'],
+    example: 'EXPENSE'
+  })
+  @IsEnum(['INCOME', 'EXPENSE', 'TRANSFER'])
+  type: string;
+
+  @ApiProperty({
+    description: 'Transaction amount',
+    minimum: 0.01,
+    example: 1500.75
+  })
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  amount: number;
+}
+```
+
+## Performance Optimization
+
+### Database Connection Pooling
+
+Prisma handles connection pooling automatically. Configure in your connection string:
+
+```env .env
+DATABASE_URL="postgresql://user:password@host:6543/db?pgbouncer=true&connection_limit=10&pool_timeout=20"
+```
+
+### Parallel Operations
+
+```typescript
+// ❌ Sequential - Slow
+const user = await prisma.user.findUnique({ where: { id } });
+const transactions = await prisma.transaction.findMany({ where: { userId: id } });
+const accounts = await prisma.account.findMany({ where: { userId: id } });
+
+// ✅ Parallel - Fast
+const [user, transactions, accounts] = await Promise.all([
+  prisma.user.findUnique({ where: { id } }),
+  prisma.transaction.findMany({ where: { userId: id } }),
+  prisma.account.findMany({ where: { userId: id } })
+]);
+```
+
+### Caching Strategy (Future Enhancement)
+
+```typescript
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+
+@Injectable()
+export class TransactionsService {
+  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {}
+
+  async getBalance(userId: string) {
+    const cacheKey = `balance:${userId}`;
+    
+    // Check cache first
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) return cached;
+    
+    // Calculate if not cached
+    const balance = await this.calculateBalance(userId);
+    
+    // Cache for 5 minutes
+    await this.cacheManager.set(cacheKey, balance, 300);
+    
+    return balance;
+  }
+}
+```
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Advanced Concepts" icon="brain" href="/advanced/concepts">
+    Deep dive into technical patterns
+  </Card>
+  <Card title="Deployment Guide" icon="rocket" href="/advanced/deployment">
+    Production deployment strategies
+  </Card>
+</CardGroup>

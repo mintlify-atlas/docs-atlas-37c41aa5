@@ -1,0 +1,130 @@
+---
+title: 'Get Dashboard Summary'
+api: 'GET /api/reports/dashboard'
+---
+
+Retrieves comprehensive financial analytics and summary statistics for the authenticated user's dashboard.
+
+## Authentication
+
+Requires Bearer token authentication via `Authorization` header.
+
+## Query Parameters
+
+<ParamField query="accountId" type="string" optional>
+  Filter statistics by a specific account. If omitted, returns data for all accounts.
+</ParamField>
+
+## Response
+
+Returns a comprehensive analytics object with summary metrics, category breakdown, and expense analysis.
+
+<ResponseField name="summary" type="object">
+  Overall financial summary metrics
+  
+  <Expandable title="properties">
+    <ResponseField name="income" type="number">
+      Total income amount (excludes transfers)
+    </ResponseField>
+    
+    <ResponseField name="expense" type="number">
+      Total expense amount (excludes transfers)
+    </ResponseField>
+    
+    <ResponseField name="cashFlow" type="number">
+      Net cash flow (income - expense)
+    </ResponseField>
+    
+    <ResponseField name="totalAvailable" type="number">
+      Total available balance. If `accountId` is provided, shows balance for that specific account. Otherwise, shows sum of all accounts.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="chartData" type="array">
+  Expense breakdown by category, sorted by total (descending)
+  
+  <Expandable title="item properties">
+    <ResponseField name="categoryName" type="string">
+      Name of the category
+    </ResponseField>
+    
+    <ResponseField name="total" type="number">
+      Total amount spent in this category
+    </ResponseField>
+    
+    <ResponseField name="color" type="string">
+      Hex color code for visualization (e.g., `#94a3b8`)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="expensesAnalysis" type="object">
+  Analysis of fixed vs variable expenses
+  
+  <Expandable title="properties">
+    <ResponseField name="fixed" type="number">
+      Total fixed expenses (recurring costs)
+    </ResponseField>
+    
+    <ResponseField name="variable" type="number">
+      Total variable expenses
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X GET "https://api.yourfinanceapp.com/api/reports/dashboard?accountId=account_123" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Example Response
+
+```json
+{
+  "summary": {
+    "income": 5000.00,
+    "expense": 3200.50,
+    "cashFlow": 1799.50,
+    "totalAvailable": 12500.00
+  },
+  "chartData": [
+    {
+      "categoryName": "Housing",
+      "total": 1200.00,
+      "color": "#3b82f6"
+    },
+    {
+      "categoryName": "Food",
+      "total": 850.50,
+      "color": "#10b981"
+    },
+    {
+      "categoryName": "Transportation",
+      "total": 450.00,
+      "color": "#f59e0b"
+    }
+  ],
+  "expensesAnalysis": {
+    "fixed": 1800.00,
+    "variable": 1400.50
+  }
+}
+```
+
+## Use Cases
+
+- **Dashboard Visualization**: Display financial overview with charts and metrics
+- **Budget Tracking**: Monitor spending patterns across categories
+- **Financial Planning**: Analyze fixed vs variable expenses for budgeting
+- **Account Filtering**: View metrics for specific accounts or all accounts combined
+
+## Notes
+
+- Transfer transactions are automatically excluded from income/expense calculations
+- Categories containing "Transferencia" (case-insensitive) are filtered out
+- Chart data is sorted by total amount in descending order
+- When `accountId` is provided, `totalAvailable` reflects only that account's balance
+- Without `accountId`, `totalAvailable` shows the sum of all user accounts

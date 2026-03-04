@@ -1,0 +1,552 @@
+---
+title: 'Advanced Technical Concepts'
+description: 'Deep dive into the technical patterns and concepts powering Your Finance App'
+icon: 'brain'
+---
+
+## Overview
+
+This guide explores the advanced technical concepts and patterns implemented in Your Finance App. Understanding these fundamentals will help you extend functionality and maintain code quality.
+
+## TypeScript Patterns
+
+### Type Safety with Prisma
+
+The app leverages Prisma's generated types for end-to-end type safety:
+
+```typescript
+import { Prisma, Transaction } from '@prisma/client';
+
+// Type-safe where clause
+const where: Prisma.TransactionWhereInput = {
+  userId,
+  deletedAt: null,
+  type: 'INCOME'
+};
+```
+
+<Note>
+Prisma generates TypeScript types automatically from your schema, ensuring database queries are type-safe at compile time.
+</Note>
+
+### Utility Types
+
+The codebase uses TypeScript utility types for flexibility:
+
+```typescript
+// Partial - Make all fields optional for updates
+type UpdateUserDto = Partial<CreateUserDto>;
+
+// Pick - Select specific fields
+type LoginDto = Pick<User, 'email' | 'password'>;
+
+// Omit - Exclude sensitive fields
+type UserResponse = Omit<User, 'password'>;
+```
+
+### Generic Types with Pagination
+
+See how generics enable reusable pagination:
+
+```typescript apps/backend/src/common/dto/pagination.dto.ts
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+function createPaginatedResponse<T>(
+  data: T[], 
+  total: number, 
+  page: number, 
+  limit: number
+): PaginatedResult<T> {
+  return {
+    data,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit)
+  };
+}
+```
+
+## NestJS Decorators
+
+### Understanding Decorators
+
+Decorators are functions that modify classes, methods, or parameters. They're central to NestJS's declarative style.
+
+### Class Decorators
+
+```typescript
+@Injectable()  // Marks class for dependency injection
+export class TransactionsService {}
+
+@Controller('transactions')  // Defines route prefix
+export class TransactionsController {}
+
+@Module({  // Declares a module
+  providers: [TransactionsService],
+  controllers: [TransactionsController]
+})
+export class TransactionsModule {}
+```
+
+### Method Decorators
+
+```typescript
+@Post('register')  // HTTP method + route
+@HttpCode(201)     // Response status code
+@UseGuards(JwtAuthGuard)  // Apply authentication
+async create(@Body() dto: CreateTransactionDto) {
+  return this.service.create(dto);
+}
+```
+
+### Parameter Decorators
+
+```typescript apps/backend/src/transactions/transactions.controller.ts
+@Get()
+findAll(
+  @Query() query: QueryTransactionDto,      // Extract query params
+  @CurrentUser() user: UserPayload,         // Custom decorator
+  @Headers('authorization') auth: string    // Extract header
+) {
+  return this.service.findAll(query, user.id);
+}
+```
+
+<Tip>
+Parameter decorators extract and validate data from the HTTP request before it reaches your handler.
+</Tip>
+
+### Custom Decorators
+
+Create your own decorators for reusable logic:
+
+```typescript
+import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+
+export const CurrentUser = createParamDecorator(
+  (data: unknown, ctx: ExecutionContext) => {
+    const request = ctx.switchToHttp().getRequest();
+    return request.user;  // Added by JWT strategy
+  },
+);
+
+// Usage
+@Get('profile')
+getProfile(@CurrentUser() user: UserPayload) {
+  return { id: user.id, email: user.email };
+}
+```
+
+## Dependency Injection
+
+### The Problem DI Solves
+
+```typescript
+// ❌ Without DI - Tight coupling
+class TransactionsService {
+  private prisma = new PrismaService();  // Hard-coded dependency
+  // Problems: Hard to test, inflexible, multiple instances
+}
+
+// ✅ With DI - Loose coupling
+@Injectable()
+class TransactionsService {
+  constructor(private prisma: PrismaService) {}
+  // Benefits: Testable, flexible, singleton managed by NestJS
+}
+```
+
+### How It Works
+
+<Steps>
+  <Step title="Define a Provider">
+    Mark the class as injectable:
+    ```typescript
+    @Injectable()
+    export class PrismaService extends PrismaClient {}
+    ```
+  </Step>
+  
+  <Step title="Register in Module">
+    Add to module's providers array:
+    ```typescript
+    @Module({
+      providers: [PrismaService],
+      exports: [PrismaService]  // Make available to other modules
+    })
+    export class PrismaModule {}
+    ```
+  </Step>
+  
+  <Step title="Inject Where Needed">
+    Request in constructor:
+    ```typescript
+    @Injectable()
+    export class AuthService {
+      constructor(private prisma: PrismaService) {}
+      // NestJS automatically injects PrismaService
+    }
+    ```
+  </Step>
+</Steps>
+
+### Provider Scopes
+
+```typescript
+@Injectable({ scope: Scope.DEFAULT })  // Singleton (one instance for app)
+
+@Injectable({ scope: Scope.REQUEST })  // New instance per HTTP request
+
+@Injectable({ scope: Scope.TRANSIENT }) // New instance every injection
+```
+
+<Warning>
+REQUEST scope can impact performance. Use DEFAULT scope unless you need request-specific state.
+</Warning>
+
+## Prisma ORM Concepts
+
+### Generated Types
+
+Prisma generates rich TypeScript types from your schema:
+
+```prisma schema.prisma
+model Transaction {
+  id          String    @id @default(uuid())
+  type        String
+  amount      Decimal   @db.Decimal(15, 2)
+  description String?
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+}
+```
+
+Generates:
+
+```typescript
+// Use generated Prisma types
+type TransactionIncludeCategory = Prisma.TransactionGetPayload<{
+  include: { category: true }
+}>;
+```
+
+### Query Building
+
+```typescript apps/backend/src/transactions/transactions.service.ts
+const where: Prisma.TransactionWhereInput = {
+  userId,
+  deletedAt: null
+};
+
+if (type) where.type = type;
+if (categoryId) where.categoryId = categoryId;
+
+if (search) {
+  where.OR = [
+    { description: { contains: search, mode: 'insensitive' } },
+    { category: { name: { contains: search, mode: 'insensitive' } } }
+  ];
+}
+
+const transactions = await this.prisma.transaction.findMany({
+  where,
+  include: { category: true, account: true },
+  orderBy: { date: 'desc' }
+});
+```
+
+### Preventing N+1 Queries
+
+```typescript
+// ❌ Bad - N+1 problem (1 + N queries)
+const users = await prisma.user.findMany();
+for (const user of users) {
+  user.transactions = await prisma.transaction.findMany({
+    where: { userId: user.id }
+  });
+}
+
+// ✅ Good - Single query with JOIN
+const users = await prisma.user.findMany({
+  include: { transactions: true }
+});
+```
+
+### Database Transactions
+
+Use `$transaction` for atomic operations:
+
+```typescript apps/backend/src/transactions/transactions.service.ts
+await this.prisma.$transaction(async (tx) => {
+  // Create transaction record
+  const newTransaction = await tx.transaction.create({
+    data: { ...transactionData }
+  });
+
+  // Update account balance atomically
+  const operation = type === 'INCOME' ? 'increment' : 'decrement';
+  await tx.account.update({
+    where: { id: accountId },
+    data: { balance: { [operation]: amount } }
+  });
+
+  return newTransaction;
+});
+```
+
+<Info>
+Prisma transactions ensure all operations succeed or fail together, maintaining data consistency.
+</Info>
+
+## Validation with class-validator
+
+### DTO Validation
+
+```typescript apps/backend/src/transactions/dto/create-transaction.dto.ts
+import { IsString, IsEnum, IsNumber, Min, MaxLength, IsDateString } from 'class-validator';
+
+export class CreateTransactionDto {
+  @IsEnum(['INCOME', 'EXPENSE', 'TRANSFER'], {
+    message: 'Type must be INCOME, EXPENSE or TRANSFER'
+  })
+  type: string;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01, { message: 'Amount must be greater than 0' })
+  amount: number;
+
+  @IsString()
+  @MaxLength(500)
+  @IsOptional()
+  description?: string;
+
+  @IsDateString()
+  @IsOptional()
+  date?: string;
+}
+```
+
+### Global Validation Pipe
+
+Configured in `main.ts`:
+
+```typescript apps/backend/src/main.ts
+app.useGlobalPipes(
+  new ValidationPipe({
+    whitelist: true,              // Strip non-whitelisted properties
+    forbidNonWhitelisted: true,   // Throw error on extra properties
+    transform: true,              // Auto-transform to DTO types
+    transformOptions: {
+      enableImplicitConversion: true
+    }
+  })
+);
+```
+
+## Exception Handling
+
+### Built-in HTTP Exceptions
+
+```typescript
+import { 
+  NotFoundException, 
+  BadRequestException,
+  UnauthorizedException,
+  ForbiddenException 
+} from '@nestjs/common';
+
+if (!user) {
+  throw new NotFoundException('User not found');
+}
+
+if (user.id !== requestUserId) {
+  throw new ForbiddenException('Access denied');
+}
+```
+
+### Custom Exception Filters
+
+The app includes a Prisma exception filter that translates database errors:
+
+```typescript apps/backend/src/common/filters/prisma-exception.filter.ts
+@Catch(Prisma.PrismaClientKnownRequestError)
+export class PrismaExceptionFilter extends BaseExceptionFilter {
+  catch(exception: PrismaClientKnownRequestError, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse();
+
+    switch (exception.code) {
+      case 'P2002':  // Unique constraint violation
+        return response.status(409).json({
+          statusCode: 409,
+          message: 'This record already exists'
+        });
+      
+      case 'P2025':  // Record not found
+        return response.status(404).json({
+          statusCode: 404,
+          message: 'Record not found'
+        });
+    }
+  }
+}
+```
+
+<CardGroup cols={2}>
+  <Card title="Error Code Reference" icon="book" href="https://www.prisma.io/docs/reference/api-reference/error-reference">
+    Complete list of Prisma error codes
+  </Card>
+  <Card title="NestJS Exception Filters" icon="filter" href="https://docs.nestjs.com/exception-filters">
+    Official documentation on exception filters
+  </Card>
+</CardGroup>
+
+## Async/Await Patterns
+
+### Promise.all for Parallel Operations
+
+```typescript apps/backend/src/transactions/transactions.service.ts
+// Fetch data and count in parallel
+const [data, total] = await Promise.all([
+  this.prisma.transaction.findMany({ where, skip, take: limit }),
+  this.prisma.transaction.count({ where })
+]);
+```
+
+### Error Handling
+
+```typescript
+async function getUser(id: string) {
+  try {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return user;
+  } catch (error) {
+    this.logger.error('Error fetching user', error);
+    throw error;
+  }
+}
+```
+
+## Authentication Strategy Pattern
+
+The JWT strategy validates tokens and loads user data:
+
+```typescript apps/backend/src/auth/strategies/jwt.strategy.ts
+@Injectable()
+export class JwtStrategy extends PassportStrategy(Strategy) {
+  constructor(private prisma: PrismaService) {
+    super({
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ignoreExpiration: false,
+      secretOrKey: process.env.JWT_SECRET
+    });
+  }
+
+  async validate(payload: JwtPayload) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub }
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Return user object attached to request
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role
+    };
+  }
+}
+```
+
+<Check>
+The `validate` method's return value is attached to `request.user` and accessible via the `@CurrentUser()` decorator.
+</Check>
+
+## Design Patterns
+
+### Repository Pattern
+
+Prisma acts as the repository layer:
+
+```typescript
+@Injectable()
+export class TransactionsService {
+  constructor(private prisma: PrismaService) {}  // Repository
+
+  async findAll() {
+    return this.prisma.transaction.findMany();
+  }
+}
+```
+
+### DTO Pattern
+
+Separate API representation from domain models:
+
+```typescript
+// What the API receives
+class CreateTransactionDto {
+  amount: number;
+  type: string;
+}
+
+// Domain model from database
+type Transaction = {
+  id: string;
+  amount: Decimal;
+  type: TransactionType;
+  createdAt: Date;
+}
+```
+
+### Service Layer Pattern
+
+Controllers handle HTTP, services handle business logic:
+
+```typescript
+// Controller - HTTP concerns
+@Controller('transactions')
+export class TransactionsController {
+  constructor(private service: TransactionsService) {}
+
+  @Post()
+  create(@Body() dto: CreateTransactionDto, @CurrentUser() user) {
+    return this.service.create(dto, user.id);
+  }
+}
+
+// Service - Business logic
+@Injectable()
+export class TransactionsService {
+  async create(dto: CreateTransactionDto, userId: string) {
+    // Validate account exists
+    // Check sufficient funds
+    // Create transaction
+    // Update account balance
+  }
+}
+```
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Best Practices" icon="sparkles" href="/advanced/best-practices">
+    Code organization and quality standards
+  </Card>
+  <Card title="Deployment" icon="rocket" href="/advanced/deployment">
+    Production deployment strategies
+  </Card>
+</CardGroup>
