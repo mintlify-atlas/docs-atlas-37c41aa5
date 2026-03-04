@@ -1,0 +1,143 @@
+{
+  "projectType": "saas",
+  "projectName": "Your Finance App",
+  "projectDescription": "A modern personal finance management application for tracking income, expenses, budgets, and financial goals",
+  "theme": "almond",
+  "primaryColor": "#94cb04",
+  "lightColor": "#545454",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "setup-guide"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "architecture/overview",
+              "architecture/database",
+              "architecture/authentication"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/transactions",
+              "features/categories",
+              "features/accounts",
+              "features/budgets",
+              "features/reports"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "advanced/concepts",
+              "advanced/best-practices",
+              "advanced/deployment"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Authentication",
+            "pages": [
+              "api/authentication/register",
+              "api/authentication/login",
+              "api/authentication/profile",
+              "api/authentication/google-oauth"
+            ]
+          },
+          {
+            "group": "Transactions",
+            "pages": [
+              "api/transactions/create",
+              "api/transactions/list",
+              "api/transactions/get",
+              "api/transactions/update",
+              "api/transactions/delete",
+              "api/transactions/balance"
+            ]
+          },
+          {
+            "group": "Categories",
+            "pages": [
+              "api/categories/create",
+              "api/categories/list",
+              "api/categories/update",
+              "api/categories/delete"
+            ]
+          },
+          {
+            "group": "Accounts",
+            "pages": [
+              "api/accounts/create",
+              "api/accounts/list",
+              "api/accounts/update",
+              "api/accounts/delete"
+            ]
+          },
+          {
+            "group": "Budgets",
+            "pages": [
+              "api/budgets/create",
+              "api/budgets/list",
+              "api/budgets/update",
+              "api/budgets/delete",
+              "api/budgets/status"
+            ]
+          },
+          {
+            "group": "Reports",
+            "pages": [
+              "api/reports/summary",
+              "api/reports/export-excel",
+              "api/reports/export-pdf"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Income and expense tracking with multi-currency support",
+    "Category management with hierarchical organization",
+    "Account management (wallets, savings, investments, credit cards)",
+    "Budget planning and tracking with alerts",
+    "Financial reports and export capabilities (Excel, PDF)",
+    "JWT authentication with Google OAuth integration",
+    "Soft delete pattern for data retention",
+    "RESTful API with Swagger documentation"
+  ],
+  "publicApiSurface": [
+    "POST /api/auth/register - Create new user account",
+    "POST /api/auth/login - Authenticate user",
+    "GET /api/auth/profile - Get current user profile",
+    "POST /api/transactions - Create transaction",
+    "GET /api/transactions - List transactions with filters",
+    "GET /api/transactions/balance - Get current balance",
+    "PATCH /api/transactions/:id - Update transaction",
+    "DELETE /api/transactions/:id - Delete transaction (soft)",
+    "POST /api/categories - Create category",
+    "GET /api/categories - List categories",
+    "POST /api/accounts - Create account",
+    "GET /api/accounts - List accounts",
+    "POST /api/budgets - Create budget",
+    "GET /api/budgets - List budgets",
+    "GET /api/budgets/:id/status - Get budget status",
+    "GET /api/reports/summary - Get financial summary",
+    "GET /api/reports/export/excel - Export transactions to Excel",
+    "GET /api/reports/export/pdf - Export transactions to PDF"
+  ]
+}
