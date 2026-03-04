@@ -1,0 +1,181 @@
+---
+title: "Delete User"
+description: "Permanently delete a user and all their data (Admin only)"
+---
+
+## DELETE /api/admin/users/:id
+
+Permanently delete a user account and all associated data including transactions, categories, accounts, and budgets. This action cannot be undone.
+
+<Warning>
+  **DESTRUCTIVE ACTION**: This permanently deletes the user and ALL their financial data. This operation cannot be reversed. Use with extreme caution.
+</Warning>
+
+### Authentication
+
+This endpoint requires:
+1. Valid JWT token in the Authorization header
+2. User must have ADMIN role
+
+```bash
+Authorization: Bearer <admin-token>
+```
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  UUID of the user to delete
+</ParamField>
+
+### Response
+
+Returns a success message.
+
+<ResponseField name="message" type="string">
+  Confirmation message
+</ResponseField>
+
+### Example Request
+
+```bash cURL
+curl -X DELETE http://localhost:3000/api/admin/users/user-uuid-123 \
+  -H "Authorization: Bearer <admin-token>"
+```
+
+```javascript JavaScript
+const userId = 'user-uuid-123';
+const response = await fetch(`http://localhost:3000/api/admin/users/${userId}`, {
+  method: 'DELETE',
+  headers: {
+    'Authorization': `Bearer ${adminToken}`
+  }
+});
+
+const result = await response.json();
+```
+
+### Example Response
+
+```json
+{
+  "message": "User and all associated data deleted successfully"
+}
+```
+
+### Data Cascade
+
+When a user is deleted, the following data is also permanently removed:
+
+<AccordionGroup>
+  <Accordion title="User Profile">
+    - Email, name, preferences
+    - Authentication credentials
+    - Avatar and contact information
+  </Accordion>
+  
+  <Accordion title="Financial Data">
+    - All transactions (income, expenses, transfers)
+    - All categories (including custom categories)
+    - All accounts (wallets, savings, investments)
+    - All budgets and spending targets
+  </Accordion>
+  
+  <Accordion title="Related Records">
+    - Reset tokens
+    - OAuth provider linkages
+    - Session data
+  </Accordion>
+</AccordionGroup>
+
+### Error Responses
+
+<Accordion title="403 - Forbidden">
+  ```json
+  {
+    "statusCode": 403,
+    "message": "Forbidden resource"
+  }
+  ```
+  
+  User does not have ADMIN role.
+</Accordion>
+
+<Accordion title="404 - User Not Found">
+  ```json
+  {
+    "statusCode": 404,
+    "message": "User not found"
+  }
+  ```
+</Accordion>
+
+<Accordion title="400 - Cannot Delete Admin">
+  ```json
+  {
+    "statusCode": 400,
+    "message": "Cannot delete admin users"
+  }
+  ```
+  
+  Some implementations may prevent deletion of admin accounts.
+</Accordion>
+
+<Accordion title="401 - Unauthorized">
+  ```json
+  {
+    "statusCode": 401,
+    "message": "Unauthorized"
+  }
+  ```
+</Accordion>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Confirm Before Deletion" icon="triangle-exclamation">
+    Always implement a confirmation dialog in the UI before calling this endpoint
+  </Card>
+  <Card title="Audit Logging" icon="file-lines">
+    Log all user deletions with admin ID and timestamp for compliance
+  </Card>
+  <Card title="Export Data First" icon="download">
+    Offer users the option to export their data before account deletion
+  </Card>
+  <Card title="Grace Period" icon="clock">
+    Consider implementing a soft-delete with grace period before permanent deletion
+  </Card>
+</CardGroup>
+
+## GDPR Compliance
+
+<Note>
+  This endpoint can be used to fulfill GDPR "Right to Erasure" (Article 17) requests. When processing data deletion requests:
+  - Document the request and admin action
+  - Verify the request is legitimate
+  - Complete deletion within required timeframe
+  - Notify the user of completed deletion
+</Note>
+
+## Alternative: Deactivation
+
+Instead of permanent deletion, consider deactivating the account:
+
+```bash
+curl -X PATCH http://localhost:3000/api/admin/users/user-uuid-123 \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"isActive": false}'
+```
+
+This preserves data while preventing login, and can be reversed if needed.
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="List Users" icon="users" href="/api/admin/list-users">
+    View all users in the system
+  </Card>
+  <Card title="Reset Password" icon="key" href="/api/admin/reset-password">
+    Reset a user's password
+  </Card>
+</CardGroup>

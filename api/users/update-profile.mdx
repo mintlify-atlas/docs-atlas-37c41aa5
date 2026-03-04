@@ -1,0 +1,224 @@
+---
+title: "Update User Profile"
+description: "Update the authenticated user's profile information and preferences"
+---
+
+## PATCH /api/users/me
+
+Update the current user's profile information, including name and preferences. All fields are optional.
+
+### Authentication
+
+This endpoint requires a valid JWT token in the Authorization header.
+
+```bash
+Authorization: Bearer <token>
+```
+
+### Request Body
+
+All fields are optional. Only include the fields you want to update.
+
+<ParamField body="firstName" type="string">
+  User's first name (minimum 2 characters)
+</ParamField>
+
+<ParamField body="lastName" type="string">
+  User's last name (minimum 2 characters)
+</ParamField>
+
+<ParamField body="currency" type="string">
+  Preferred currency code (exactly 3 characters, e.g., ARS, USD, EUR)
+</ParamField>
+
+<ParamField body="fiscalStartDay" type="number">
+  Day of month when fiscal period starts (1-28). Used for monthly reports and budget calculations.
+</ParamField>
+
+### Response
+
+Returns the updated user object.
+
+<ResponseField name="id" type="string">
+  User UUID
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  User's email address
+</ResponseField>
+
+<ResponseField name="firstName" type="string">
+  Updated first name
+</ResponseField>
+
+<ResponseField name="lastName" type="string">
+  Updated last name
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  Updated preferred currency
+</ResponseField>
+
+<ResponseField name="fiscalStartDay" type="number">
+  Updated fiscal start day
+</ResponseField>
+
+### Example Requests
+
+<Tabs>
+  <Tab title="Update Name">
+    ```bash cURL
+    curl -X PATCH http://localhost:3000/api/users/me \
+      -H "Authorization: Bearer <token>" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "firstName": "Jane",
+        "lastName": "Smith"
+      }'
+    ```
+  </Tab>
+  
+  <Tab title="Update Currency">
+    ```bash cURL
+    curl -X PATCH http://localhost:3000/api/users/me \
+      -H "Authorization: Bearer <token>" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "currency": "USD"
+      }'
+    ```
+  </Tab>
+  
+  <Tab title="Update Fiscal Day">
+    ```bash cURL
+    curl -X PATCH http://localhost:3000/api/users/me \
+      -H "Authorization: Bearer <token>" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "fiscalStartDay": 15
+      }'
+    ```
+  </Tab>
+</Tabs>
+
+```javascript JavaScript
+const response = await fetch('http://localhost:3000/api/users/me', {
+  method: 'PATCH',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    firstName: 'Jane',
+    lastName: 'Smith',
+    currency: 'USD',
+    fiscalStartDay: 15
+  })
+});
+
+const updatedUser = await response.json();
+```
+
+### Example Response
+
+```json
+{
+  "id": "user-uuid-123",
+  "email": "jane.smith@example.com",
+  "firstName": "Jane",
+  "lastName": "Smith",
+  "currency": "USD",
+  "fiscalStartDay": 15,
+  "timezone": "America/Argentina/Buenos_Aires",
+  "language": "es",
+  "role": "USER",
+  "isActive": true,
+  "subscription": "FREE",
+  "createdAt": "2024-01-15T10:00:00.000Z",
+  "updatedAt": "2024-01-20T16:45:00.000Z"
+}
+```
+
+### Validation Rules
+
+<AccordionGroup>
+  <Accordion title="First Name & Last Name">
+    - Must be at least 2 characters long
+    - Cannot be empty strings
+    - Should contain valid characters
+  </Accordion>
+  
+  <Accordion title="Currency">
+    - Must be exactly 3 characters (ISO 4217 format)
+    - Examples: ARS, USD, EUR, GBP, JPY
+    - The app supports multi-currency transactions
+  </Accordion>
+  
+  <Accordion title="Fiscal Start Day">
+    - Must be an integer between 1 and 28
+    - Day 28 is the maximum to ensure validity across all months
+    - Used for monthly budget periods and reports
+  </Accordion>
+</AccordionGroup>
+
+### Error Responses
+
+<Accordion title="400 - Validation Error">
+  ```json
+  {
+    "statusCode": 400,
+    "message": [
+      "firstName must be longer than or equal to 2 characters",
+      "currency must be longer than or equal to 3 characters"
+    ],
+    "error": "Bad Request"
+  }
+  ```
+</Accordion>
+
+<Accordion title="401 - Unauthorized">
+  ```json
+  {
+    "statusCode": 401,
+    "message": "Unauthorized"
+  }
+  ```
+</Accordion>
+
+<Accordion title="404 - User Not Found">
+  ```json
+  {
+    "statusCode": 404,
+    "message": "User not found"
+  }
+  ```
+</Accordion>
+
+## Impact of Currency Change
+
+<Warning>
+  Changing the preferred currency does NOT convert existing account balances or transaction amounts. The currency field is a user preference that affects:
+  - Default currency for new accounts
+  - Display formatting in reports
+  - Currency selection in the UI
+</Warning>
+
+## Fiscal Start Day Usage
+
+The `fiscalStartDay` setting affects:
+- **Budget Periods**: Budgets are calculated from this day of the month
+- **Monthly Reports**: Financial summaries use this as the period boundary
+- **Dashboard**: Month-to-date calculations respect this setting
+
+**Example**: If `fiscalStartDay = 15`, January's budget period runs from Jan 15 to Feb 14.
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Get Profile" icon="user" href="/api/users/get-profile">
+    Retrieve current profile information
+  </Card>
+  <Card title="Register" icon="user-plus" href="/api/authentication/register">
+    Create a new user account
+  </Card>
+</CardGroup>

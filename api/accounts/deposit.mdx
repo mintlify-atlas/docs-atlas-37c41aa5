@@ -1,0 +1,172 @@
+---
+title: "Deposit Funds"
+description: "Deposit funds into an account (test endpoint)"
+---
+
+## POST /api/accounts/:id/deposit
+
+Deposit a specified amount into an account. This is a test/utility endpoint for adding funds to accounts during development.
+
+<Warning>
+  This endpoint is intended for testing and development purposes. In a production environment, you would typically use transactions to record income rather than directly depositing funds.
+</Warning>
+
+### Authentication
+
+This endpoint requires a valid JWT token in the Authorization header.
+
+```bash
+Authorization: Bearer <token>
+```
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  UUID of the account to deposit into
+</ParamField>
+
+### Request Body
+
+<ParamField body="amount" type="number" required>
+  Amount to deposit (must be positive)
+</ParamField>
+
+### Response
+
+Returns the updated account with the new balance.
+
+<ResponseField name="id" type="string">
+  Account UUID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Account name
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  Account type (WALLET, SAVINGS, INVESTMENT, CREDIT_CARD)
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  Account currency code
+</ResponseField>
+
+<ResponseField name="balance" type="number">
+  Updated balance after deposit
+</ResponseField>
+
+<ResponseField name="color" type="string">
+  Account color (hex code)
+</ResponseField>
+
+<ResponseField name="icon" type="string">
+  Account icon name
+</ResponseField>
+
+### Example Request
+
+```bash cURL
+curl -X POST http://localhost:3000/api/accounts/uuid-123/deposit \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 1000
+  }'
+```
+
+```javascript JavaScript
+const accountId = 'uuid-123';
+const response = await fetch(`http://localhost:3000/api/accounts/${accountId}/deposit`, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    amount: 1000
+  })
+});
+
+const data = await response.json();
+```
+
+### Example Response
+
+```json
+{
+  "id": "uuid-123",
+  "name": "Main Wallet",
+  "type": "WALLET",
+  "currency": "ARS",
+  "balance": 6000,
+  "color": "#3B82F6",
+  "icon": "wallet",
+  "isDefault": true,
+  "userId": "user-uuid",
+  "createdAt": "2024-01-15T10:00:00.000Z",
+  "updatedAt": "2024-01-15T11:30:00.000Z"
+}
+```
+
+### Error Responses
+
+<Accordion title="400 - Invalid Amount">
+  ```json
+  {
+    "statusCode": 400,
+    "message": "Amount must be positive"
+  }
+  ```
+</Accordion>
+
+<Accordion title="404 - Account Not Found">
+  ```json
+  {
+    "statusCode": 404,
+    "message": "Account not found"
+  }
+  ```
+</Accordion>
+
+<Accordion title="401 - Unauthorized">
+  ```json
+  {
+    "statusCode": 401,
+    "message": "Unauthorized"
+  }
+  ```
+</Accordion>
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Testing" icon="flask">
+    Quickly add funds to accounts during development and testing
+  </Card>
+  <Card title="Initial Setup" icon="rocket">
+    Set up initial balances when onboarding users
+  </Card>
+</CardGroup>
+
+<Tip>
+  For production use, create income transactions instead of using this deposit endpoint. This maintains proper transaction history and audit trails.
+</Tip>
+
+## Alternative Approach
+
+Instead of using the deposit endpoint, consider creating an income transaction:
+
+```bash
+curl -X POST http://localhost:3000/api/transactions \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "INCOME",
+    "amount": 1000,
+    "currency": "ARS",
+    "description": "Initial deposit",
+    "accountId": "uuid-123"
+  }'
+```
+
+This approach maintains a full transaction history and is recommended for production use.

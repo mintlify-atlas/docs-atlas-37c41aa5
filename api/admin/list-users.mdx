@@ -1,0 +1,168 @@
+---
+title: "List All Users"
+description: "Retrieve a list of all users in the system (Admin only)"
+---
+
+## GET /api/admin/users
+
+Retrieve a complete list of all users in the system. This endpoint is restricted to administrators only.
+
+<Warning>
+  This endpoint requires ADMIN role. Regular users will receive a 403 Forbidden error.
+</Warning>
+
+### Authentication
+
+This endpoint requires:
+1. Valid JWT token in the Authorization header
+2. User must have ADMIN role
+
+```bash
+Authorization: Bearer <admin-token>
+```
+
+### Response
+
+Returns an array of user objects.
+
+<ResponseField name="users" type="array">
+  Array of user objects
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">User UUID</ResponseField>
+    <ResponseField name="email" type="string">User's email address</ResponseField>
+    <ResponseField name="firstName" type="string">User's first name</ResponseField>
+    <ResponseField name="lastName" type="string">User's last name</ResponseField>
+    <ResponseField name="role" type="string">USER or ADMIN</ResponseField>
+    <ResponseField name="isActive" type="boolean">Account active status</ResponseField>
+    <ResponseField name="subscription" type="string">FREE or PRO</ResponseField>
+    <ResponseField name="authProvider" type="string">LOCAL, GOOGLE, MICROSOFT, or APPLE</ResponseField>
+    <ResponseField name="emailVerified" type="string | null">Email verification timestamp</ResponseField>
+    <ResponseField name="createdAt" type="string">Account creation timestamp</ResponseField>
+    <ResponseField name="lastLogin" type="string | null">Last login timestamp</ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example Request
+
+```bash cURL
+curl -X GET http://localhost:3000/api/admin/users \
+  -H "Authorization: Bearer <admin-token>"
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:3000/api/admin/users', {
+  method: 'GET',
+  headers: {
+    'Authorization': `Bearer ${adminToken}`
+  }
+});
+
+const users = await response.json();
+```
+
+### Example Response
+
+```json
+[
+  {
+    "id": "user-uuid-1",
+    "email": "john.doe@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "role": "USER",
+    "isActive": true,
+    "subscription": "FREE",
+    "authProvider": "LOCAL",
+    "emailVerified": "2024-01-15T10:00:00.000Z",
+    "createdAt": "2024-01-15T10:00:00.000Z",
+    "lastLogin": "2024-01-20T14:30:00.000Z"
+  },
+  {
+    "id": "user-uuid-2",
+    "email": "jane.smith@example.com",
+    "firstName": "Jane",
+    "lastName": "Smith",
+    "role": "USER",
+    "isActive": true,
+    "subscription": "PRO",
+    "authProvider": "GOOGLE",
+    "emailVerified": "2024-01-16T09:15:00.000Z",
+    "createdAt": "2024-01-16T09:15:00.000Z",
+    "lastLogin": "2024-01-21T08:45:00.000Z"
+  },
+  {
+    "id": "admin-uuid-3",
+    "email": "admin@yourfinanceapp.com",
+    "firstName": "Admin",
+    "lastName": "User",
+    "role": "ADMIN",
+    "isActive": true,
+    "subscription": "PRO",
+    "authProvider": "LOCAL",
+    "emailVerified": "2024-01-01T00:00:00.000Z",
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "lastLogin": "2024-01-21T10:00:00.000Z"
+  }
+]
+```
+
+### Error Responses
+
+<Accordion title="403 - Forbidden">
+  ```json
+  {
+    "statusCode": 403,
+    "message": "Forbidden resource"
+  }
+  ```
+  
+  User does not have ADMIN role.
+</Accordion>
+
+<Accordion title="401 - Unauthorized">
+  ```json
+  {
+    "statusCode": 401,
+    "message": "Unauthorized"
+  }
+  ```
+  
+  Token is missing, invalid, or expired.
+</Accordion>
+
+## Security Considerations
+
+<Note>
+  - Password hashes are never included in the response
+  - Sensitive fields like reset tokens are excluded
+  - This endpoint is protected by both JWT authentication and role-based authorization
+  - All admin actions should be logged for audit purposes
+</Note>
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="User Management" icon="users">
+    Display all users in an admin dashboard
+  </Card>
+  <Card title="User Analytics" icon="chart-bar">
+    Analyze user registration trends and activity
+  </Card>
+  <Card title="Subscription Tracking" icon="credit-card">
+    Monitor FREE vs PRO subscription distribution
+  </Card>
+  <Card title="Support" icon="headset">
+    Look up user accounts for customer support
+  </Card>
+</CardGroup>
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Delete User" icon="trash" href="/api/admin/delete-user">
+    Permanently delete a user account
+  </Card>
+  <Card title="Reset Password" icon="key" href="/api/admin/reset-password">
+    Reset a user's password
+  </Card>
+</CardGroup>

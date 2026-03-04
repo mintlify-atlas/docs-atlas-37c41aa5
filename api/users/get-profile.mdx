@@ -1,0 +1,203 @@
+---
+title: "Get User Profile"
+description: "Retrieve the authenticated user's profile information"
+---
+
+## GET /api/users/me
+
+Retrieve the complete profile of the currently authenticated user, including preferences and settings.
+
+### Authentication
+
+This endpoint requires a valid JWT token in the Authorization header.
+
+```bash
+Authorization: Bearer <token>
+```
+
+### Response
+
+Returns the user profile object with all properties except the password.
+
+<ResponseField name="id" type="string">
+  User UUID
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  User's email address
+</ResponseField>
+
+<ResponseField name="firstName" type="string">
+  User's first name
+</ResponseField>
+
+<ResponseField name="lastName" type="string">
+  User's last name
+</ResponseField>
+
+<ResponseField name="avatarUrl" type="string | null">
+  URL to user's avatar image
+</ResponseField>
+
+<ResponseField name="phone" type="string | null">
+  User's phone number
+</ResponseField>
+
+<ResponseField name="authProvider" type="string">
+  Authentication provider: LOCAL, GOOGLE, MICROSOFT, or APPLE
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  User's preferred currency (default: ARS)
+</ResponseField>
+
+<ResponseField name="fiscalStartDay" type="number">
+  Day of month when fiscal period starts (1-28)
+</ResponseField>
+
+<ResponseField name="timezone" type="string">
+  User's timezone (default: America/Argentina/Buenos_Aires)
+</ResponseField>
+
+<ResponseField name="language" type="string">
+  User's preferred language (default: es)
+</ResponseField>
+
+<ResponseField name="role" type="string">
+  User role: USER or ADMIN
+</ResponseField>
+
+<ResponseField name="isActive" type="boolean">
+  Whether the user account is active
+</ResponseField>
+
+<ResponseField name="subscription" type="string">
+  Subscription tier: FREE or PRO
+</ResponseField>
+
+<ResponseField name="emailVerified" type="string | null">
+  Timestamp of email verification, or null if not verified
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  Account creation timestamp
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string">
+  Last update timestamp
+</ResponseField>
+
+### Example Request
+
+```bash cURL
+curl -X GET http://localhost:3000/api/users/me \
+  -H "Authorization: Bearer <token>"
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:3000/api/users/me', {
+  method: 'GET',
+  headers: {
+    'Authorization': `Bearer ${token}`
+  }
+});
+
+const user = await response.json();
+```
+
+```python Python
+import requests
+
+headers = {'Authorization': f'Bearer {token}'}
+response = requests.get(
+    'http://localhost:3000/api/users/me',
+    headers=headers
+)
+
+user = response.json()
+```
+
+### Example Response
+
+```json
+{
+  "id": "user-uuid-123",
+  "email": "john.doe@example.com",
+  "firstName": "John",
+  "lastName": "Doe",
+  "avatarUrl": null,
+  "phone": null,
+  "authProvider": "LOCAL",
+  "currency": "ARS",
+  "fiscalStartDay": 1,
+  "timezone": "America/Argentina/Buenos_Aires",
+  "language": "es",
+  "role": "USER",
+  "isActive": true,
+  "subscription": "FREE",
+  "emailVerified": "2024-01-15T10:00:00.000Z",
+  "createdAt": "2024-01-15T10:00:00.000Z",
+  "updatedAt": "2024-01-20T14:30:00.000Z"
+}
+```
+
+### Error Responses
+
+<Accordion title="401 - Unauthorized">
+  ```json
+  {
+    "statusCode": 401,
+    "message": "Unauthorized"
+  }
+  ```
+  
+  Token is missing, invalid, or expired.
+</Accordion>
+
+<Accordion title="404 - User Not Found">
+  ```json
+  {
+    "statusCode": 404,
+    "message": "User not found"
+  }
+  ```
+</Accordion>
+
+## Difference from /auth/profile
+
+This endpoint (`/users/me`) returns more detailed information than `/auth/profile`, including:
+- Subscription tier
+- Email verification status
+- Fiscal preferences
+- Phone number
+- Creation and update timestamps
+
+Use `/auth/profile` for quick token validation and basic user info. Use `/users/me` for complete profile data.
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Profile Page" icon="user">
+    Display complete user information in a profile page
+  </Card>
+  <Card title="Settings Form" icon="gear">
+    Pre-populate user settings in an edit form
+  </Card>
+  <Card title="Account Dashboard" icon="chart-line">
+    Show user details and preferences in dashboard
+  </Card>
+  <Card title="Subscription Status" icon="credit-card">
+    Check user's current subscription tier
+  </Card>
+</CardGroup>
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Update Profile" icon="edit" href="/api/users/update-profile">
+    Modify user profile information
+  </Card>
+  <Card title="Auth Profile" icon="shield" href="/api/authentication/profile">
+    Lightweight profile from JWT token
+  </Card>
+</CardGroup>

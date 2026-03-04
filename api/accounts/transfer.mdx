@@ -1,0 +1,175 @@
+---
+title: "Transfer Between Accounts"
+description: "Transfer funds between two accounts with the same currency"
+---
+
+## POST /api/accounts/transfer
+
+Transfer a specified amount from one account to another. Both accounts must belong to the authenticated user and have the same currency.
+
+### Authentication
+
+This endpoint requires a valid JWT token in the Authorization header.
+
+```bash
+Authorization: Bearer <token>
+```
+
+### Request Body
+
+<ParamField body="fromAccountId" type="string" required>
+  UUID of the source account
+</ParamField>
+
+<ParamField body="toAccountId" type="string" required>
+  UUID of the destination account
+</ParamField>
+
+<ParamField body="amount" type="number" required>
+  Amount to transfer (must be positive)
+</ParamField>
+
+<ParamField body="description" type="string">
+  Optional description for the transfer
+</ParamField>
+
+### Response
+
+Returns both updated account balances.
+
+<ResponseField name="fromAccount" type="object">
+  Updated source account
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">Account UUID</ResponseField>
+    <ResponseField name="name" type="string">Account name</ResponseField>
+    <ResponseField name="balance" type="number">Updated balance after transfer</ResponseField>
+    <ResponseField name="currency" type="string">Account currency</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="toAccount" type="object">
+  Updated destination account
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">Account UUID</ResponseField>
+    <ResponseField name="name" type="string">Account name</ResponseField>
+    <ResponseField name="balance" type="number">Updated balance after transfer</ResponseField>
+    <ResponseField name="currency" type="string">Account currency</ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example Request
+
+```bash cURL
+curl -X POST http://localhost:3000/api/accounts/transfer \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fromAccountId": "uuid-account-1",
+    "toAccountId": "uuid-account-2",
+    "amount": 500,
+    "description": "Monthly savings transfer"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:3000/api/accounts/transfer', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    fromAccountId: 'uuid-account-1',
+    toAccountId: 'uuid-account-2',
+    amount: 500,
+    description: 'Monthly savings transfer'
+  })
+});
+
+const data = await response.json();
+```
+
+### Example Response
+
+```json
+{
+  "fromAccount": {
+    "id": "uuid-account-1",
+    "name": "Main Wallet",
+    "type": "WALLET",
+    "currency": "ARS",
+    "balance": 4500,
+    "color": "#3B82F6",
+    "icon": "wallet"
+  },
+  "toAccount": {
+    "id": "uuid-account-2",
+    "name": "Emergency Fund",
+    "type": "SAVINGS",
+    "currency": "ARS",
+    "balance": 5500,
+    "targetAmount": 10000,
+    "color": "#10B981",
+    "icon": "piggy-bank"
+  }
+}
+```
+
+### Error Responses
+
+<Accordion title="400 - Validation Error">
+  ```json
+  {
+    "statusCode": 400,
+    "message": "Amount must be positive"
+  }
+  ```
+</Accordion>
+
+<Accordion title="400 - Currency Mismatch">
+  ```json
+  {
+    "statusCode": 400,
+    "message": "Cannot transfer between accounts with different currencies"
+  }
+  ```
+</Accordion>
+
+<Accordion title="400 - Insufficient Funds">
+  ```json
+  {
+    "statusCode": 400,
+    "message": "Insufficient funds in source account"
+  }
+  ```
+</Accordion>
+
+<Accordion title="404 - Account Not Found">
+  ```json
+  {
+    "statusCode": 404,
+    "message": "Source or destination account not found"
+  }
+  ```
+</Accordion>
+
+## Validation Rules
+
+<Note>
+  - Both accounts must belong to the authenticated user
+  - Accounts must have the same currency
+  - Amount must be positive and greater than zero
+  - Source account must have sufficient balance
+  - Cannot transfer to the same account
+</Note>
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Create Account" icon="plus" href="/api/accounts/create">
+    Create a new account
+  </Card>
+  <Card title="List Accounts" icon="list" href="/api/accounts/list">
+    View all your accounts
+  </Card>
+</CardGroup>

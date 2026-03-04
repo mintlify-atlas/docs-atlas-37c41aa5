@@ -1,0 +1,196 @@
+---
+title: "Seed Default Categories"
+description: "Create a set of default categories for the user"
+---
+
+## POST /api/categories/seed
+
+Create a predefined set of default categories for the authenticated user. This is useful for new users to get started quickly with common expense and income categories.
+
+### Authentication
+
+This endpoint requires a valid JWT token in the Authorization header.
+
+```bash
+Authorization: Bearer <token>
+```
+
+### Request Body
+
+No request body required. The endpoint creates a predefined set of categories.
+
+### Response
+
+Returns an array of created categories.
+
+<ResponseField name="categories" type="array">
+  Array of created category objects
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">Category UUID</ResponseField>
+    <ResponseField name="name" type="string">Category name</ResponseField>
+    <ResponseField name="type" type="string">INCOME, EXPENSE, or BOTH</ResponseField>
+    <ResponseField name="isFixed" type="boolean">Whether this is a fixed expense</ResponseField>
+    <ResponseField name="color" type="string">Hex color code</ResponseField>
+    <ResponseField name="icon" type="string">Icon name</ResponseField>
+    <ResponseField name="parentId" type="string | null">Parent category ID for hierarchical categories</ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example Request
+
+```bash cURL
+curl -X POST http://localhost:3000/api/categories/seed \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json"
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:3000/api/categories/seed', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  }
+});
+
+const categories = await response.json();
+```
+
+### Example Response
+
+```json
+[
+  {
+    "id": "uuid-1",
+    "name": "Salary",
+    "type": "INCOME",
+    "isFixed": false,
+    "color": "#10B981",
+    "icon": "wallet",
+    "parentId": null,
+    "userId": "user-uuid",
+    "createdAt": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "uuid-2",
+    "name": "Housing",
+    "type": "EXPENSE",
+    "isFixed": true,
+    "color": "#EF4444",
+    "icon": "home",
+    "parentId": null,
+    "userId": "user-uuid",
+    "createdAt": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "uuid-3",
+    "name": "Rent",
+    "type": "EXPENSE",
+    "isFixed": true,
+    "color": "#EF4444",
+    "icon": "key",
+    "parentId": "uuid-2",
+    "userId": "user-uuid",
+    "createdAt": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "uuid-4",
+    "name": "Food & Dining",
+    "type": "EXPENSE",
+    "isFixed": false,
+    "color": "#F59E0B",
+    "icon": "utensils",
+    "parentId": null,
+    "userId": "user-uuid",
+    "createdAt": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "uuid-5",
+    "name": "Transportation",
+    "type": "EXPENSE",
+    "isFixed": false,
+    "color": "#6366F1",
+    "icon": "car",
+    "parentId": null,
+    "userId": "user-uuid",
+    "createdAt": "2024-01-15T10:00:00.000Z"
+  }
+]
+```
+
+## Default Categories Created
+
+The seed endpoint creates the following default category structure:
+
+### Income Categories
+- **Salary** - Regular employment income
+- **Freelance** - Self-employment income
+- **Investments** - Dividends and capital gains
+- **Other Income** - Miscellaneous income
+
+### Expense Categories
+- **Housing** (Fixed)
+  - Rent
+  - Utilities
+  - Maintenance
+- **Food & Dining** (Variable)
+  - Groceries
+  - Restaurants
+- **Transportation** (Variable)
+  - Public Transit
+  - Fuel
+  - Vehicle Maintenance
+- **Entertainment** (Variable)
+- **Healthcare** (Variable)
+- **Shopping** (Variable)
+- **Bills** (Fixed)
+
+<Note>
+  The exact categories created may vary based on the implementation in the source code. Check the `categories.service.ts` seed method for the current list.
+</Note>
+
+### Error Responses
+
+<Accordion title="400 - Categories Already Exist">
+  ```json
+  {
+    "statusCode": 400,
+    "message": "User already has categories. Use POST /categories to create custom categories."
+  }
+  ```
+</Accordion>
+
+<Accordion title="401 - Unauthorized">
+  ```json
+  {
+    "statusCode": 401,
+    "message": "Unauthorized"
+  }
+  ```
+</Accordion>
+
+## When to Use
+
+<CardGroup cols={2}>
+  <Card title="New User Onboarding" icon="user-plus">
+    Automatically set up categories for new users during registration
+  </Card>
+  <Card title="Quick Start" icon="rocket">
+    Help users start tracking expenses immediately without manual setup
+  </Card>
+</CardGroup>
+
+<Tip>
+  Call this endpoint once after user registration to provide a complete starting point. Users can then customize, add, or remove categories as needed.
+</Tip>
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Create Category" icon="plus" href="/api/categories/create">
+    Create custom categories
+  </Card>
+  <Card title="List Categories" icon="list" href="/api/categories/list">
+    View all categories
+  </Card>
+</CardGroup>

@@ -92,8 +92,10 @@
             "pages": [
               "api/categories/create",
               "api/categories/list",
+              "api/categories/get",
               "api/categories/update",
-              "api/categories/delete"
+              "api/categories/delete",
+              "api/categories/seed"
             ]
           },
           {
@@ -102,7 +104,16 @@
               "api/accounts/create",
               "api/accounts/list",
               "api/accounts/update",
-              "api/accounts/delete"
+              "api/accounts/delete",
+              "api/accounts/transfer",
+              "api/accounts/deposit"
+            ]
+          },
+          {
+            "group": "Users",
+            "pages": [
+              "api/users/get-profile",
+              "api/users/update-profile"
             ]
           },
           {
@@ -121,6 +132,14 @@
               "api/reports/summary",
               "api/reports/export-excel",
               "api/reports/export-pdf"
+            ]
+          },
+          {
+            "group": "Admin",
+            "pages": [
+              "api/admin/list-users",
+              "api/admin/delete-user",
+              "api/admin/reset-password"
             ]
           }
         ]
